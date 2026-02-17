@@ -1,0 +1,11 @@
+/.next/
+/out/
+/build
+
+.pnpm-debug.log*
+
+.env*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

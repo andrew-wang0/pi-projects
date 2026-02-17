@@ -10,3 +10,7 @@ node_modules
 
 # typescript
 *.tsbuildinfo
+
+# python
+__pycache__
+.venv
