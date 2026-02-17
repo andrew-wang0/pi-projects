@@ -1,0 +1,27 @@
+{
+  "name": "@packages/prettier-config",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./prettier.config.js"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "lint": "eslint --fix --max-warnings=0"
+  },
+  "lint-staged": {
+    "*": [
+      "prettier --write"
+    ],
+    "*.js": [
+      "eslint --fix --max-warnings=0"
+    ]
+  },
+  "dependencies": {
+    "prettier-plugin-embed": "0.5.1",
+    "prettier-plugin-packagejson": "3.0.0",
+    "prettier-plugin-sh": "0.18.0",
+    "prettier-plugin-sql": "0.19.2",
+    "prettier-plugin-tailwindcss": "0.7.2"
+  }
+}
