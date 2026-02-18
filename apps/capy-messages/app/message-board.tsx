@@ -27,7 +27,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { MobileDateTimePicker } from "@mui/x-date-pickers/MobileDateTimePicker";
 import dayjs, { type Dayjs } from "dayjs";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { MessageState } from "@/lib/message-store";
 
@@ -70,6 +70,8 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [isSchedulePickerOpen, setIsSchedulePickerOpen] = useState(false);
   const inactivityTimeoutRef = useRef<number | null>(null);
+  const stateRef = useRef<MessageState>(initialState);
+  const latestRefreshRequestIdRef = useRef(0);
 
   const editInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -77,25 +79,71 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
     return state.scheduledMessages[0]?.startAt ?? null;
   }, [state.scheduledMessages]);
 
-  const refreshState = async () => {
-    const response = await fetch("/api/message", { cache: "no-store" });
-    if (!response.ok) {
-      return;
-    }
+  const applyServerState = useCallback(
+    (nextState: MessageState, source: "poll" | "mutation" | "schedule") => {
+      const currentState = stateRef.current;
 
-    const payload = (await response.json()) as MessageState;
-    setState(payload);
-  };
+      // Poll/scheduled refresh responses can arrive late; never let them overwrite newer UI state.
+      if (
+        source !== "mutation" &&
+        nextState.updatedAt < currentState.updatedAt &&
+        nextState.scheduledMessages.length <= currentState.scheduledMessages.length
+      ) {
+        return;
+      }
+
+      stateRef.current = nextState;
+      setState(nextState);
+    },
+    [],
+  );
+
+  const refreshState = useCallback(
+    async (source: "poll" | "schedule" = "poll") => {
+      const requestId = ++latestRefreshRequestIdRef.current;
+      const response = await fetch("/api/message", { cache: "no-store" });
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as MessageState;
+
+      if (requestId !== latestRefreshRequestIdRef.current) {
+        return;
+      }
+
+      applyServerState(payload, source);
+    },
+    [applyServerState],
+  );
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      void refreshState();
+    let timeoutId: number | null = null;
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) {
+        return;
+      }
+
+      await refreshState("poll");
+
+      timeoutId = window.setTimeout(() => {
+        void tick();
+      }, 1000);
+    };
+
+    timeoutId = window.setTimeout(() => {
+      void tick();
     }, 1000);
 
     return () => {
-      window.clearInterval(intervalId);
+      cancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
-  }, []);
+  }, [refreshState]);
 
   useEffect(() => {
     const markInteraction = () => {
@@ -130,13 +178,13 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
 
     const runAt = new Date(nextScheduledAt).getTime() - Date.now() + 500;
     if (runAt <= 0) {
-      void refreshState();
+      void refreshState("schedule");
       return;
     }
 
     const timeoutId = window.setTimeout(
       () => {
-        void refreshState();
+        void refreshState("schedule");
       },
       Math.min(runAt, 2147483647),
     );
@@ -144,7 +192,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [nextScheduledAt]);
+  }, [nextScheduledAt, refreshState]);
 
   const openEdit = () => {
     setSpeedDialOpen(false);
@@ -191,7 +239,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
         throw new Error(payload.error ?? "Unable to save message.");
       }
 
-      setState(payload);
+      applyServerState(payload, "mutation");
       closeDialog();
     } catch (error) {
       setEditError(error instanceof Error ? error.message : "Unable to save message.");
@@ -227,7 +275,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
         throw new Error(payload.error ?? "Unable to schedule message.");
       }
 
-      setState(payload);
+      applyServerState(payload, "mutation");
       closeDialog();
     } catch (error) {
       setScheduleError(error instanceof Error ? error.message : "Unable to schedule message.");
@@ -246,7 +294,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
     }
 
     const payload = (await response.json()) as MessageState;
-    setState(payload);
+    applyServerState(payload, "mutation");
   };
 
   return (
@@ -260,7 +308,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
           alignItems: "center",
           justifyContent: "center",
           p: 2,
-          background: "linear-gradient(180deg, #cba983 0%, #e7cfb2 40%, #f6e9d7 75%, #f9f0e2 100%)",
+          bgcolor: "background.default",
         }}
       >
         <Typography
@@ -272,7 +320,6 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
             maxWidth: "94vw",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
-            textShadow: "0 2px 8px rgba(53, 36, 24, 0.16)",
             fontSize: {
               xs: "clamp(2rem, 9vw, 3.2rem)",
               sm: "clamp(2.8rem, 6.5vw, 4.7rem)",
@@ -469,6 +516,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
                 label="Show at"
                 value={scheduleAt}
                 onChange={(value) => setScheduleAt(value)}
+                orientation="landscape"
                 open={isSchedulePickerOpen}
                 onOpen={() => setIsSchedulePickerOpen(true)}
                 onClose={() => setIsSchedulePickerOpen(false)}
@@ -514,7 +562,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
                   color="text.secondary"
                   sx={{ mb: 1, fontSize: "1rem", fontWeight: 700 }}
                 >
-                  Upcoming schedules
+                  Upcoming messages
                 </Typography>
 
                 {state.scheduledMessages.length === 0 ? (
@@ -531,6 +579,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
                             edge="end"
                             aria-label="Delete schedule"
                             onClick={() => void deleteSchedule(schedule.id)}
+                            color="error"
                           >
                             <DeleteOutlineIcon />
                           </IconButton>
