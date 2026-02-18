@@ -1,7 +1,6 @@
 const CACHE_NAME = "capy-messages-v1";
 const PRECACHE_URLS = [
   "/",
-  "/offline",
   "/manifest.webmanifest",
   "/favicon.ico",
   "/icon-192x192.png",
@@ -51,11 +50,6 @@ self.addEventListener("fetch", (event) => {
           const cachedPage = await caches.match(request);
           if (cachedPage) {
             return cachedPage;
-          }
-
-          const offlinePage = await caches.match("/offline");
-          if (offlinePage) {
-            return offlinePage;
           }
 
           return caches.match("/");
