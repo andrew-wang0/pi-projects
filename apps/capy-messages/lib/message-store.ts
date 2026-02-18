@@ -44,6 +44,12 @@ function pacificTimestampNoTimezone(date = new Date()) {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}`;
 }
 
+function normalizeToMinute(date: Date) {
+  const next = new Date(date);
+  next.setSeconds(0, 0);
+  return next;
+}
+
 function keyFromFileName(fileName: string) {
   return fileName.slice(0, -5);
 }
@@ -90,6 +96,17 @@ async function writeMessageFile(key: string, message: string) {
   const payload = { message: sanitizeMessage(message) };
 
   await fs.writeFile(filePath, JSON.stringify(payload, null, 2), "utf-8");
+}
+
+async function hasMessageFileForKey(key: string) {
+  const filePath = path.join(DATA_DIR, fileNameFromKey(key));
+
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function ensureAtLeastOneMessageFile() {
@@ -147,7 +164,7 @@ export async function saveActiveMessage(message: string): Promise<MessageState> 
 }
 
 export async function scheduleMessage(message: string, startAt: string): Promise<MessageState> {
-  const scheduleDate = new Date(startAt);
+  const scheduleDate = normalizeToMinute(new Date(startAt));
 
   if (Number.isNaN(scheduleDate.getTime())) {
     throw new Error("Invalid schedule time.");
@@ -157,7 +174,19 @@ export async function scheduleMessage(message: string, startAt: string): Promise
     throw new Error("Schedule time must be in the future.");
   }
 
-  await writeMessageFile(pacificTimestampNoTimezone(scheduleDate), message);
+  const scheduleKey = pacificTimestampNoTimezone(scheduleDate);
+  const scheduleMinuteKey = scheduleKey.slice(0, 16);
+
+  const current = await readMessageState();
+  const hasDuplicateMinute = current.scheduledMessages.some(
+    (scheduledMessage) => scheduledMessage.startAt.slice(0, 16) === scheduleMinuteKey,
+  );
+
+  if (hasDuplicateMinute || (await hasMessageFileForKey(scheduleKey))) {
+    throw new Error("A message is already scheduled for that time.");
+  }
+
+  await writeMessageFile(scheduleKey, message);
   return readMessageState();
 }
 

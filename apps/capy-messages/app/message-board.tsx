@@ -648,6 +648,17 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
               <Accordion
                 expanded={isUpcomingExpanded}
                 onChange={(_, expanded) => setIsUpcomingExpanded(expanded)}
+                disableGutters
+                elevation={0}
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  overflow: "hidden",
+                  "&:before": {
+                    display: "none",
+                  },
+                }}
               >
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography color="text.secondary" sx={{ fontSize: "1rem", fontWeight: 700 }}>
