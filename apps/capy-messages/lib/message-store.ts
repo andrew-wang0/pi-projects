@@ -3,7 +3,7 @@ import path from "node:path";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DEFAULT_MESSAGE = "Tap settings to edit this message.";
-const MAX_MESSAGE_LENGTH = 800;
+const MAX_MESSAGE_LENGTH = 100;
 const FILE_NAME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.json$/;
 
 export type ScheduledMessage = {
