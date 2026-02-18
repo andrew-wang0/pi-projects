@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import React from "react";
 
+import MuiProvider from "./mui-provider";
 import SWRegister from "./sw-register";
 
 const geistSans = Geist({
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: "#6f4e37",
 };
 
 export default function RootLayout({
@@ -41,9 +42,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
-        <SWRegister />
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <MuiProvider>
+          {children}
+          <SWRegister />
+        </MuiProvider>
       </body>
     </html>
   );

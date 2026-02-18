@@ -5,6 +5,7 @@
 .pnpm-debug.log*
 
 .env*
+/data/
 
 # typescript
 *.tsbuildinfo
