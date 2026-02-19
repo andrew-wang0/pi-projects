@@ -1,20 +1,30 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import { BACKGROUND_OPTIONS, DEFAULT_BACKGROUND_ID } from "@/lib/background-options";
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const DEFAULT_MESSAGE = "Tap settings to edit this message.";
 const MAX_MESSAGE_LENGTH = 100;
 const FILE_NAME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.json$/;
+const VALID_BACKGROUND_IDS = new Set(BACKGROUND_OPTIONS.map((option) => option.id));
+
+type StoredMessageFile = {
+  message: string;
+  backgroundId: string;
+};
 
 export type ScheduledMessage = {
   id: string;
   message: string;
+  backgroundId: string;
   startAt: string;
   createdAt: string;
 };
 
 export type MessageState = {
   activeMessage: string;
+  activeBackgroundId: string;
   updatedAt: string;
   scheduledMessages: ScheduledMessage[];
 };
@@ -23,6 +33,12 @@ function sanitizeMessage(input: string) {
   const trimmed = input.trim();
   const safeValue = trimmed.length === 0 ? DEFAULT_MESSAGE : trimmed;
   return safeValue.slice(0, MAX_MESSAGE_LENGTH);
+}
+
+function sanitizeBackgroundId(input: unknown) {
+  return typeof input === "string" && VALID_BACKGROUND_IDS.has(input)
+    ? input
+    : DEFAULT_BACKGROUND_ID;
 }
 
 function pacificTimestampNoTimezone(date = new Date()) {
@@ -73,27 +89,33 @@ async function listMessageFiles() {
     .sort((a, b) => a.localeCompare(b));
 }
 
-async function readMessageFile(fileName: string): Promise<string | null> {
+async function readMessageFile(fileName: string): Promise<StoredMessageFile | null> {
   try {
     const filePath = path.join(DATA_DIR, fileName);
     const raw = await fs.readFile(filePath, "utf-8");
-    const parsed = JSON.parse(raw) as { message?: unknown };
+    const parsed = JSON.parse(raw) as { message?: unknown; backgroundId?: unknown };
 
     if (typeof parsed.message !== "string") {
       return null;
     }
 
-    return sanitizeMessage(parsed.message);
+    return {
+      message: sanitizeMessage(parsed.message),
+      backgroundId: sanitizeBackgroundId(parsed.backgroundId),
+    };
   } catch {
     return null;
   }
 }
 
-async function writeMessageFile(key: string, message: string) {
+async function writeMessageFile(key: string, message: string, backgroundId: string) {
   await ensureDataDir();
 
   const filePath = path.join(DATA_DIR, fileNameFromKey(key));
-  const payload = { message: sanitizeMessage(message) };
+  const payload = {
+    message: sanitizeMessage(message),
+    backgroundId: sanitizeBackgroundId(backgroundId),
+  };
 
   await fs.writeFile(filePath, JSON.stringify(payload, null, 2), "utf-8");
 }
@@ -116,7 +138,11 @@ async function ensureAtLeastOneMessageFile() {
     return;
   }
 
-  await writeMessageFile(pacificTimestampNoTimezone(new Date()), DEFAULT_MESSAGE);
+  await writeMessageFile(
+    pacificTimestampNoTimezone(new Date()),
+    DEFAULT_MESSAGE,
+    DEFAULT_BACKGROUND_ID,
+  );
 }
 
 export async function readMessageState(): Promise<MessageState> {
@@ -126,26 +152,29 @@ export async function readMessageState(): Promise<MessageState> {
   const nowKey = pacificTimestampNoTimezone(new Date());
 
   let activeMessage = DEFAULT_MESSAGE;
+  let activeBackgroundId = DEFAULT_BACKGROUND_ID;
   let updatedAt = nowKey;
   const scheduledMessages: ScheduledMessage[] = [];
 
   for (const fileName of files) {
     const key = keyFromFileName(fileName);
-    const message = await readMessageFile(fileName);
+    const fileData = await readMessageFile(fileName);
 
-    if (!message) {
+    if (!fileData) {
       continue;
     }
 
     if (key <= nowKey) {
-      activeMessage = message;
+      activeMessage = fileData.message;
+      activeBackgroundId = fileData.backgroundId;
       updatedAt = key;
       continue;
     }
 
     scheduledMessages.push({
       id: key,
-      message,
+      message: fileData.message,
+      backgroundId: fileData.backgroundId,
       startAt: key,
       createdAt: key,
     });
@@ -153,17 +182,25 @@ export async function readMessageState(): Promise<MessageState> {
 
   return {
     activeMessage,
+    activeBackgroundId,
     updatedAt,
     scheduledMessages,
   };
 }
 
-export async function saveActiveMessage(message: string): Promise<MessageState> {
-  await writeMessageFile(pacificTimestampNoTimezone(new Date()), message);
+export async function saveActiveMessage(
+  message: string,
+  backgroundId: string = DEFAULT_BACKGROUND_ID,
+): Promise<MessageState> {
+  await writeMessageFile(pacificTimestampNoTimezone(new Date()), message, backgroundId);
   return readMessageState();
 }
 
-export async function scheduleMessage(message: string, startAt: string): Promise<MessageState> {
+export async function scheduleMessage(
+  message: string,
+  startAt: string,
+  backgroundId: string = DEFAULT_BACKGROUND_ID,
+): Promise<MessageState> {
   const scheduleDate = normalizeToMinute(new Date(startAt));
 
   if (Number.isNaN(scheduleDate.getTime())) {
@@ -186,7 +223,7 @@ export async function scheduleMessage(message: string, startAt: string): Promise
     throw new Error("A message is already scheduled for that time.");
   }
 
-  await writeMessageFile(scheduleKey, message);
+  await writeMessageFile(scheduleKey, message, backgroundId);
   return readMessageState();
 }
 

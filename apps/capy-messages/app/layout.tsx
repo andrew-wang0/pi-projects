@@ -4,8 +4,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import React from "react";
 
-import MuiProvider from "./mui-provider";
-import SWRegister from "./sw-register";
+import MuiProvider from "@/components/providers/MuiProvider";
+import SWRegister from "@/components/pwa/SWRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
