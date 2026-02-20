@@ -1,13 +1,24 @@
 import random
 
-from backgrounds import BEACH_PATTERN, FIRE_PATTERN, FRANCES_PATTERN, SLEEP_PATTERN
+from backgrounds import (
+    BEACH_PATTERN,
+    FIRE_PATTERN,
+    FRANCES_PATTERN,
+    NIGHT_PATTERN,
+    SLEEP_PATTERN,
+    TAN_BROWN_PATTERN,
+    TRANQUIL_PATTERN,
+)
 
 from .beach import render_beach_frame
 from .common import RGB, blend_rgb
 from .fire import FirePattern
 from .frances import render_frances_frame
+from .night import render_night_frame
 from .rainbow import render_rainbow_frame
 from .sleep import render_sleep_frame
+from .tan_brown import render_tan_brown_frame
+from .tranquil import render_tranquil_frame
 
 
 class PatternRenderer:
@@ -31,12 +42,18 @@ class PatternRenderer:
 
         if pattern == FIRE_PATTERN:
             target_colors = self._fire_pattern.render(frame)
+        elif pattern == TAN_BROWN_PATTERN:
+            target_colors = render_tan_brown_frame(self._pixel_count, frame)
         elif pattern == BEACH_PATTERN:
             target_colors = render_beach_frame(self._pixel_count, frame)
         elif pattern == FRANCES_PATTERN:
             target_colors = render_frances_frame(self._pixel_count, frame)
         elif pattern == SLEEP_PATTERN:
             target_colors = render_sleep_frame(self._pixel_count, frame)
+        elif pattern == NIGHT_PATTERN:
+            target_colors = render_night_frame(self._pixel_count, frame)
+        elif pattern == TRANQUIL_PATTERN:
+            target_colors = render_tranquil_frame(self._pixel_count, frame)
         else:
             target_colors = render_rainbow_frame(self._pixel_count, frame)
 

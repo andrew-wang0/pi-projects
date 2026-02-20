@@ -85,6 +85,30 @@ export const BACKGROUND_OPTIONS: BackgroundOption[] = [
       y2: 470,
     },
   },
+  {
+    id: "night",
+    label: "Night",
+    src: "/backgrounds/night.gif",
+    textColor: "#fff",
+    bounds: {
+      x1: 10,
+      y1: 10,
+      x2: 790,
+      y2: 470,
+    },
+  },
+  {
+    id: "tranquil",
+    label: "Tranquil",
+    src: "/backgrounds/tranquil.gif",
+    textColor: "#fff",
+    bounds: {
+      x1: 10,
+      y1: 10,
+      x2: 790,
+      y2: 250,
+    },
+  },
 ];
 
 export const DEFAULT_BACKGROUND_ID = "default";

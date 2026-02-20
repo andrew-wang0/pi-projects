@@ -5,6 +5,9 @@ FIRE_PATTERN = "fire"
 BEACH_PATTERN = "beach"
 FRANCES_PATTERN = "frances"
 SLEEP_PATTERN = "sleep"
+TAN_BROWN_PATTERN = "tan_brown"
+NIGHT_PATTERN = "night"
+TRANQUIL_PATTERN = "tranquil"
 
 
 @dataclass(frozen=True)
@@ -16,12 +19,14 @@ class BackgroundLighting:
 
 # Central source of truth for known backgrounds and their light behavior.
 BACKGROUND_LIGHTING: tuple[BackgroundLighting, ...] = (
-    BackgroundLighting(background_id="default", label="Default", pattern=RAINBOW_PATTERN),
+    BackgroundLighting(background_id="default", label="Default", pattern=TAN_BROWN_PATTERN),
     BackgroundLighting(background_id="beach", label="Beach", pattern=BEACH_PATTERN),
     BackgroundLighting(background_id="fire", label="Fire", pattern=FIRE_PATTERN),
     BackgroundLighting(background_id="fruits", label="Fruits", pattern=RAINBOW_PATTERN),
     BackgroundLighting(background_id="frances", label="Frances", pattern=FRANCES_PATTERN),
     BackgroundLighting(background_id="sleep", label="Sleep", pattern=SLEEP_PATTERN),
+    BackgroundLighting(background_id="night", label="Night", pattern=NIGHT_PATTERN),
+    BackgroundLighting(background_id="tranquil", label="Tranquil", pattern=TRANQUIL_PATTERN),
 )
 
 DEFAULT_BACKGROUND_ID = "default"
