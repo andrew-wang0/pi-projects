@@ -1,3 +1,5 @@
 gpiozero
 lgpio
 rpi-ws281x
+pi5neo
+requests
