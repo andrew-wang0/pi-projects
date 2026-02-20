@@ -13,6 +13,8 @@ def render_night_frame(pixel_count: int, frame: int) -> list[RGB]:
     # Keep the sparkle hotspot centered around LEDs 2..4 with slight drift.
     twinkle_center = 2.0 + 0.35 * math.sin(frame * 0.028)
     twinkle_sigma = max(1.1, pixel_count * 0.16)
+    glow_center = 2.35 + 0.18 * math.sin(frame * 0.018)
+    glow_sigma = max(1.0, pixel_count * 0.14)
 
     for i in range(pixel_count):
         breathe = 0.5 + 0.5 * math.sin(frame * 0.024 + i * 0.23)
@@ -24,6 +26,14 @@ def render_night_frame(pixel_count: int, frame: int) -> list[RGB]:
             clamp(base_s, 0.74, 0.92),
             clamp(base_v, 0.04, 0.13),
         )
+
+        glow_dist = i - glow_center
+        glow_strength = math.exp(-(glow_dist * glow_dist) / (2.0 * glow_sigma * glow_sigma))
+        glow_pulse = 0.5 + 0.5 * math.sin(frame * 0.05 + i * 0.2)
+
+        ember_orange = _hsv_to_rgb(0.073, 0.86, 0.42)
+        glow_alpha = clamp(glow_strength * (0.12 + 0.16 * glow_pulse), 0.0, 0.30)
+        ember_base = blend_rgb(base, ember_orange, glow_alpha)
 
         dist = i - twinkle_center
         hotspot_strength = math.exp(-(dist * dist) / (2.0 * twinkle_sigma * twinkle_sigma))
@@ -41,8 +51,8 @@ def render_night_frame(pixel_count: int, frame: int) -> list[RGB]:
             clamp(orange_v, 0.26, 1.0),
         )
 
-        orange_alpha = clamp(hotspot_strength * (0.10 + 0.78 * sparkle), 0.0, 0.88)
-        colors.append(blend_rgb(base, sunset_orange, orange_alpha))
+        orange_alpha = clamp(hotspot_strength * (0.08 + 0.72 * sparkle), 0.0, 0.86)
+        colors.append(blend_rgb(ember_base, sunset_orange, orange_alpha))
 
     return colors
 
