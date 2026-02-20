@@ -16,7 +16,7 @@ def _heat_to_fire_rgb(heat: float) -> RGB:
         return (int(180 + 70 * t), int(14 + 90 * t), int(8 * t))
 
     t = (heat - 0.66) / 0.34
-    return (255, int(160 + 95 * t), int(70 + 185 * t))
+    return (255, int(120 + 105 * t), int(35 + 95 * t))
 
 
 class FirePattern:
@@ -50,14 +50,14 @@ class FirePattern:
         for _ in range(spark_count):
             spark_idx = self._rng.randrange(n)
             self._heat[spark_idx] = clamp(
-                self._heat[spark_idx] + self._rng.uniform(0.35, 0.95),
+                self._heat[spark_idx] + self._rng.uniform(0.25, 0.75),
                 0.0,
                 1.0,
             )
             # Nearby embers also warm up slightly.
             for neighbor in ((spark_idx - 1) % n, (spark_idx + 1) % n):
                 self._heat[neighbor] = clamp(
-                    self._heat[neighbor] + self._rng.uniform(0.05, 0.22),
+                    self._heat[neighbor] + self._rng.uniform(0.03, 0.16),
                     0.0,
                     1.0,
                 )
