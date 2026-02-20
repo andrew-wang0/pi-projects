@@ -1,2 +1,3 @@
 gpiozero
 lgpio
+rpi-ws281x
