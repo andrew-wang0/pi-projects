@@ -4,6 +4,7 @@ RAINBOW_PATTERN = "rainbow"
 FIRE_PATTERN = "fire"
 BEACH_PATTERN = "beach"
 FRANCES_PATTERN = "frances"
+SLEEP_PATTERN = "sleep"
 
 
 @dataclass(frozen=True)
@@ -20,7 +21,7 @@ BACKGROUND_LIGHTING: tuple[BackgroundLighting, ...] = (
     BackgroundLighting(background_id="fire", label="Fire", pattern=FIRE_PATTERN),
     BackgroundLighting(background_id="fruits", label="Fruits", pattern=RAINBOW_PATTERN),
     BackgroundLighting(background_id="frances", label="Frances", pattern=FRANCES_PATTERN),
-    BackgroundLighting(background_id="sleep", label="Sleep", pattern=RAINBOW_PATTERN),
+    BackgroundLighting(background_id="sleep", label="Sleep", pattern=SLEEP_PATTERN),
 )
 
 DEFAULT_BACKGROUND_ID = "default"

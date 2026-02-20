@@ -9,14 +9,14 @@ def _heat_to_fire_rgb(heat: float) -> RGB:
 
     if heat < 0.33:
         t = heat / 0.33
-        return (int(160 * t), int(8 * t), int(0 * t))
+        return (int(175 * t), int(4 * t), int(0 * t))
 
     if heat < 0.66:
         t = (heat - 0.33) / 0.33
-        return (int(160 + 80 * t), int(8 + 42 * t), int(2 + 8 * t))
+        return (int(175 + 65 * t), int(4 + 24 * t), int(0 + 4 * t))
 
     t = (heat - 0.66) / 0.34
-    return (int(240 + 15 * t), int(50 + 70 * t), int(10 + 22 * t))
+    return (int(240 + 15 * t), int(28 + 42 * t), int(4 + 12 * t))
 
 
 class FirePattern:
