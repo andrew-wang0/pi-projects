@@ -94,7 +94,7 @@ export const BACKGROUND_OPTIONS: BackgroundOption[] = [
       x1: 10,
       y1: 10,
       x2: 790,
-      y2: 470,
+      y2: 325,
     },
   },
   {
