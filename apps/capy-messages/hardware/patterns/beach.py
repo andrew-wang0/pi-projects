@@ -24,13 +24,13 @@ def render_beach_frame(pixel_count: int, frame: int) -> list[RGB]:
             clamp(sea_val, 0.22, 1.0),
         )
 
-        sand_hue = 0.12 + 0.01 * math.sin(frame * 0.03 + i * 0.4)
-        sand_sat = 0.55 + 0.08 * (0.5 + 0.5 * math.sin(frame * 0.05 + i * 0.35))
-        sand_val = 0.58 + 0.22 * (0.5 + 0.5 * math.sin(frame * 0.04 - i * 0.22))
+        sand_hue = 0.15 + 0.012 * math.sin(frame * 0.03 + i * 0.4)
+        sand_sat = 0.70 + 0.12 * (0.5 + 0.5 * math.sin(frame * 0.05 + i * 0.35))
+        sand_val = 0.70 + 0.22 * (0.5 + 0.5 * math.sin(frame * 0.04 - i * 0.22))
         sand = colorsys.hsv_to_rgb(
-            clamp(sand_hue, 0.08, 0.15),
-            clamp(sand_sat, 0.35, 0.75),
-            clamp(sand_val, 0.40, 1.0),
+            clamp(sand_hue, 0.13, 0.18),
+            clamp(sand_sat, 0.55, 0.90),
+            clamp(sand_val, 0.55, 1.0),
         )
 
         dist = (i - wave_center) / transition_half_width
