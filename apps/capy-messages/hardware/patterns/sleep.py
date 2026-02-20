@@ -9,33 +9,33 @@ def render_sleep_frame(pixel_count: int, frame: int) -> list[RGB]:
 
     colors: list[RGB] = []
 
-    # Purple bob glides back and forth along the strip.
-    bob_center = (pixel_count - 1) * (0.5 + 0.5 * math.sin(frame * 0.065))
-    bob_width = max(1.0, pixel_count * 0.18)
+    # Purple blob glides back and forth along the strip.
+    blob_center = (pixel_count - 1) * (0.5 + 0.5 * math.sin(frame * 0.065))
+    blob_width = max(1.0, pixel_count * 0.18)
 
     for i in range(pixel_count):
-        # Calm blue base with subtle breathing.
+        # Deep blue base with subtle breathing.
         breathe = 0.5 + 0.5 * math.sin(frame * 0.035 + i * 0.45)
-        base_h = 0.59 + 0.01 * math.sin(frame * 0.02 + i * 0.2)
-        base_s = 0.68 + 0.10 * breathe
-        base_v = 0.22 + 0.26 * breathe
+        base_h = 0.61 + 0.008 * math.sin(frame * 0.02 + i * 0.2)
+        base_s = 0.78 + 0.10 * breathe
+        base_v = 0.07 + 0.12 * breathe
 
         # Keep base in blue range.
         r, g, b = _hsv_to_rgb(
-            clamp(base_h, 0.56, 0.63),
-            clamp(base_s, 0.55, 0.85),
-            clamp(base_v, 0.12, 0.60),
+            clamp(base_h, 0.58, 0.64),
+            clamp(base_s, 0.70, 0.92),
+            clamp(base_v, 0.04, 0.24),
         )
         base = (r, g, b)
 
-        # Moving purple bob with gaussian-like falloff.
-        dist = i - bob_center
-        bob_strength = math.exp(-(dist * dist) / (2.0 * bob_width * bob_width))
-        bob_pulse = 0.55 + 0.45 * math.sin(frame * 0.11 + i * 0.3)
-        bob_alpha = clamp(0.85 * bob_strength * bob_pulse, 0.0, 0.90)
+        # Moving deep purple blob with gaussian-like falloff.
+        dist = i - blob_center
+        blob_strength = math.exp(-(dist * dist) / (2.0 * blob_width * blob_width))
+        blob_pulse = 0.50 + 0.50 * math.sin(frame * 0.11 + i * 0.3)
+        blob_alpha = clamp(0.80 * blob_strength * blob_pulse, 0.0, 0.82)
 
-        purple = (180, 60, 255)
-        colors.append(blend_rgb(base, purple, bob_alpha))
+        purple = (82, 24, 138)
+        colors.append(blend_rgb(base, purple, blob_alpha))
 
     return colors
 
