@@ -160,24 +160,63 @@ class _Pi5NeoPixels:
                 "NeoPixel pi5neo backend uses SPI MOSI (GPIO10). "
                 f"Current NEOPIXEL_PIN={NEOPIXEL_PIN} is ignored."
             )
+        configured_spi_device = Path(NEOPIXEL_PI5_SPI_DEVICE)
+        if configured_spi_device.exists():
+            spi_device = str(configured_spi_device)
+        else:
+            spi_candidates = sorted(Path("/dev").glob("spidev*"))
+            if not spi_candidates:
+                raise RuntimeError(
+                    f"SPI device not found at {NEOPIXEL_PI5_SPI_DEVICE}. "
+                    "Enable SPI and verify /dev/spidev* is present."
+                )
+            spi_device = str(spi_candidates[0])
+            print(
+                f"Configured SPI device {NEOPIXEL_PI5_SPI_DEVICE} not found; "
+                f"using {spi_device}."
+            )
+
         self._strip = Pi5Neo(
-            NEOPIXEL_PI5_SPI_DEVICE,
+            spi_device,
             NEOPIXEL_COUNT,
             NEOPIXEL_PI5_SPI_KHZ,
         )
+        self._enabled = True
+
+    def _disable(self, exc: Exception) -> None:
+        if self._enabled:
+            print(
+                "NeoPixel pi5neo disabled after SPI error: "
+                f"{exc}. Check SPI interface and wiring."
+            )
+        self._enabled = False
 
     def begin(self) -> None:
+        if not self._enabled:
+            return
+        # Probe SPI early so startup can fail fast into fallback behavior.
+        self.clear()
         return
 
     def clear(self) -> None:
-        self._strip.clear_strip()
-        self._strip.update_strip()
+        if not self._enabled:
+            return
+        try:
+            self._strip.clear_strip()
+            self._strip.update_strip()
+        except Exception as exc:
+            self._disable(exc)
 
     def show(self, colors: Sequence[tuple[int, int, int]]) -> None:
+        if not self._enabled:
+            return
         for i in range(NEOPIXEL_COUNT):
             r, g, b = colors[i]
             self._strip.set_led_color(i, r, g, b)
-        self._strip.update_strip()
+        try:
+            self._strip.update_strip()
+        except Exception as exc:
+            self._disable(exc)
 
 
 def _build_pixels() -> _NoopPixels | _RpiWs281xPixels | _Pi5NeoPixels:
