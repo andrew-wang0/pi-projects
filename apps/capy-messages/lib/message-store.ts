@@ -8,7 +8,6 @@ const DEFAULT_MESSAGE = "Tap settings to edit this message.";
 const MAX_MESSAGE_LENGTH = 100;
 const FILE_NAME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.json$/;
 const VALID_BACKGROUND_IDS = new Set(BACKGROUND_OPTIONS.map((option) => option.id));
-
 type StoredMessageFile = {
   message: string;
   backgroundId: string;
