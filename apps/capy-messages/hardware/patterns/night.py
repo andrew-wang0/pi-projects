@@ -31,7 +31,14 @@ def render_night_frame(pixel_count: int, frame: int) -> list[RGB]:
         glow_strength = math.exp(-(glow_dist * glow_dist) / (2.0 * glow_sigma * glow_sigma))
         glow_pulse = 0.5 + 0.5 * math.sin(frame * 0.05 + i * 0.2)
 
-        ember_orange = _hsv_to_rgb(0.073, 0.86, 0.42)
+        ember_h = 0.056 + 0.004 * math.sin(frame * 0.03 + i * 0.35)
+        ember_s = 0.94
+        ember_v = 0.30 + 0.08 * glow_pulse
+        ember_orange = _hsv_to_rgb(
+            clamp(ember_h, 0.048, 0.065),
+            clamp(ember_s, 0.88, 1.0),
+            clamp(ember_v, 0.24, 0.44),
+        )
         glow_alpha = clamp(glow_strength * (0.12 + 0.16 * glow_pulse), 0.0, 0.30)
         ember_base = blend_rgb(base, ember_orange, glow_alpha)
 
