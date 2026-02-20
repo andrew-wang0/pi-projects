@@ -14,14 +14,13 @@ from config import (
     BACKLIGHT,
     NEOPIXEL,
     OFF_DELAY_SECONDS,
-    PIR_FLASH_PULSES,
-    PIR_FLASH_SECONDS,
     PIR_PIN,
     read_backlight_max_brightness,
 )
 from neopixel_driver import build_pixel_driver
 from patterns import PatternRenderer
 from state import RuntimeState
+from touch_input import TouchWatcher
 
 Device.pin_factory = LGPIOFactory()
 
@@ -72,14 +71,7 @@ def main() -> None:
         while not state.shutdown.is_set():
             if state.display_active.is_set():
                 pattern = pattern_for_background(state.get_background_id())
-                flash_remaining = state.pir_flash_remaining(time.monotonic())
-                colors = patterns.render(
-                    pattern,
-                    frame,
-                    flash_remaining,
-                    PIR_FLASH_SECONDS,
-                    PIR_FLASH_PULSES,
-                )
+                colors = patterns.render(pattern, frame)
 
                 pixels.show(colors)
                 frame += 1
@@ -93,13 +85,24 @@ def main() -> None:
 
             time.sleep(0.05)
 
-    def on_motion() -> None:
-        cancel_off_timer()
+    def wake_display() -> None:
         backlight.turn_on()
         state.display_active.set()
-        state.trigger_pir_flash(PIR_FLASH_SECONDS)
+
+    def on_motion() -> None:
+        cancel_off_timer()
+        wake_display()
 
     def on_no_motion() -> None:
+        schedule_backlight_off()
+
+    def on_touch() -> None:
+        wake_display()
+
+        if pir.is_active:
+            cancel_off_timer()
+            return
+
         schedule_backlight_off()
 
     pixels.begin()
@@ -109,9 +112,14 @@ def main() -> None:
 
     animation_thread = threading.Thread(target=animation_loop, daemon=True)
     background_thread = threading.Thread(target=background_sync.run_forever, daemon=True)
+    touch_thread = threading.Thread(
+        target=TouchWatcher(on_touch=on_touch, shutdown_event=state.shutdown).run_forever,
+        daemon=True,
+    )
 
     animation_thread.start()
     background_thread.start()
+    touch_thread.start()
 
     pir.when_motion = on_motion
     pir.when_no_motion = on_no_motion
@@ -125,6 +133,7 @@ def main() -> None:
 
         animation_thread.join(timeout=1.0)
         background_thread.join(timeout=1.0)
+        touch_thread.join(timeout=1.0)
 
         pixels.clear()
         backlight.turn_off()

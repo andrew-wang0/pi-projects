@@ -3,7 +3,7 @@ import random
 from backgrounds import BEACH_PATTERN, FIRE_PATTERN, FRANCES_PATTERN
 
 from .beach import render_beach_frame
-from .common import RGB, blend_rgb, clamp
+from .common import RGB, blend_rgb
 from .fire import FirePattern
 from .frances import render_frances_frame
 from .rainbow import render_rainbow_frame
@@ -22,9 +22,6 @@ class PatternRenderer:
         self,
         pattern: str,
         frame: int,
-        pir_flash_remaining: float,
-        pir_flash_seconds: float,
-        pir_flash_pulses: int,
     ) -> list[RGB]:
         if pattern != self._last_pattern:
             if pattern == FIRE_PATTERN:
@@ -40,9 +37,7 @@ class PatternRenderer:
         else:
             target_colors = render_rainbow_frame(self._pixel_count, frame)
 
-        colors = self._smooth_colors(target_colors)
-        self._apply_pir_flash(colors, pir_flash_remaining, pir_flash_seconds, pir_flash_pulses)
-        return colors
+        return self._smooth_colors(target_colors)
 
     def _smooth_colors(self, target_colors: list[RGB]) -> list[RGB]:
         if len(self._smoothed_colors) != len(target_colors):
@@ -57,26 +52,3 @@ class PatternRenderer:
 
         self._smoothed_colors = smoothed
         return smoothed.copy()
-
-    def _apply_pir_flash(
-        self,
-        colors: list[RGB],
-        pir_flash_remaining: float,
-        pir_flash_seconds: float,
-        pir_flash_pulses: int,
-    ) -> None:
-        if (
-            pir_flash_remaining <= 0
-            or not colors
-            or pir_flash_seconds <= 0
-            or pir_flash_pulses <= 0
-        ):
-            return
-
-        elapsed = clamp(pir_flash_seconds - pir_flash_remaining, 0.0, pir_flash_seconds)
-        phase_count = pir_flash_pulses * 2
-        phase_progress = elapsed / pir_flash_seconds
-        phase_index = int(phase_progress * phase_count)
-        is_red_phase = phase_index % 2 == 0
-
-        colors[0] = (255, 0, 0) if is_red_phase else (255, 255, 255)

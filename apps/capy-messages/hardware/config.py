@@ -17,6 +17,13 @@ def _float_env(name: str, default: float) -> float:
     return float(value)
 
 
+def _bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class BacklightConfig:
     dir: Path
@@ -48,11 +55,17 @@ class MessageApiConfig:
     reconnect_delay_seconds: float
 
 
+@dataclass(frozen=True)
+class TouchConfig:
+    enabled: bool
+    device_name_hint: str
+    debounce_seconds: float
+    rescan_seconds: float
+
+
 PIR_PIN = _int_env("PIR_PIN", 14)
 OFF_DELAY_SECONDS = _float_env("OFF_DELAY_SECONDS", 15.0)
 ANIMATION_FRAME_DELAY_SECONDS = _float_env("ANIMATION_FRAME_DELAY_SECONDS", 0.02)
-PIR_FLASH_SECONDS = _float_env("PIR_FLASH_SECONDS", 0.25)
-PIR_FLASH_PULSES = _int_env("PIR_FLASH_PULSES", 5)
 
 _backlight_dir = Path(os.getenv("BACKLIGHT_DIR", "/sys/class/backlight/10-0045"))
 _backlight_brightness = _backlight_dir / "brightness"
@@ -86,6 +99,13 @@ MESSAGE_API = MessageApiConfig(
     connect_timeout_seconds=_float_env("HTTP_CONNECT_TIMEOUT_SECONDS", 4.0),
     read_timeout_seconds=_float_env("HTTP_READ_TIMEOUT_SECONDS", 45.0),
     reconnect_delay_seconds=_float_env("HTTP_RECONNECT_DELAY_SECONDS", 1.5),
+)
+
+TOUCH = TouchConfig(
+    enabled=_bool_env("TOUCH_ENABLED", True),
+    device_name_hint=os.getenv("TOUCH_DEVICE_NAME_HINT", "").strip(),
+    debounce_seconds=_float_env("TOUCH_DEBOUNCE_SECONDS", 0.15),
+    rescan_seconds=_float_env("TOUCH_RESCAN_SECONDS", 2.0),
 )
 
 
