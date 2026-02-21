@@ -4,20 +4,16 @@ import { subscribeMessageState } from "@/lib/message-stream";
 export const runtime = "nodejs";
 
 const encoder = new TextEncoder();
-const HEARTBEAT_INTERVAL_MS = 15_000;
+const STATE_TICK_INTERVAL_MS = 5_000;
 
 function formatEventData(payload: unknown) {
   return encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
 }
 
-function formatHeartbeat() {
-  return encoder.encode(": keepalive\n\n");
-}
-
 export function GET(request: Request) {
   let closed = false;
   let unsubscribe: (() => void) | null = null;
-  let heartbeatInterval: NodeJS.Timeout | null = null;
+  let stateTickInterval: NodeJS.Timeout | null = null;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -28,9 +24,9 @@ export function GET(request: Request) {
 
         closed = true;
 
-        if (heartbeatInterval) {
-          clearInterval(heartbeatInterval);
-          heartbeatInterval = null;
+        if (stateTickInterval) {
+          clearInterval(stateTickInterval);
+          stateTickInterval = null;
         }
 
         if (unsubscribe) {
@@ -67,17 +63,15 @@ export function GET(request: Request) {
         });
       });
 
-      heartbeatInterval = setInterval(() => {
+      stateTickInterval = setInterval(() => {
         if (closed) {
           return;
         }
 
-        try {
-          controller.enqueue(formatHeartbeat());
-        } catch {
+        void pushLatestState().catch(() => {
           cleanup();
-        }
-      }, HEARTBEAT_INTERVAL_MS);
+        });
+      }, STATE_TICK_INTERVAL_MS);
 
       request.signal.addEventListener(
         "abort",
@@ -91,9 +85,9 @@ export function GET(request: Request) {
     cancel() {
       closed = true;
 
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
+      if (stateTickInterval) {
+        clearInterval(stateTickInterval);
+        stateTickInterval = null;
       }
 
       if (unsubscribe) {
