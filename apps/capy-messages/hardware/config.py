@@ -53,6 +53,7 @@ class MessageApiConfig:
     connect_timeout_seconds: float
     read_timeout_seconds: float
     reconnect_delay_seconds: float
+    state_refresh_seconds: float
 
 
 @dataclass(frozen=True)
@@ -99,6 +100,7 @@ MESSAGE_API = MessageApiConfig(
     connect_timeout_seconds=_float_env("HTTP_CONNECT_TIMEOUT_SECONDS", 4.0),
     read_timeout_seconds=_float_env("HTTP_READ_TIMEOUT_SECONDS", 45.0),
     reconnect_delay_seconds=_float_env("HTTP_RECONNECT_DELAY_SECONDS", 1.5),
+    state_refresh_seconds=_float_env("HTTP_STATE_REFRESH_SECONDS", 1.0),
 )
 
 TOUCH = TouchConfig(

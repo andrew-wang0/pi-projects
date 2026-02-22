@@ -15,42 +15,58 @@ class BackgroundSyncClient:
 
     def run_forever(self) -> None:
         session = requests.Session()
+        poll_session = requests.Session()
 
-        while not self._shutdown.is_set():
-            try:
-                self._fetch_background_state(session)
-            except Exception as exc:
-                print(f"Background state fetch failed: {exc}")
+        try:
+            while not self._shutdown.is_set():
+                try:
+                    self._fetch_background_state(session)
+                except Exception as exc:
+                    print(f"Background state fetch failed: {exc}")
 
-            if self._shutdown.is_set():
-                break
+                if self._shutdown.is_set():
+                    break
 
-            try:
-                with session.get(
-                    MESSAGE_API.stream_url,
-                    stream=True,
-                    timeout=(MESSAGE_API.connect_timeout_seconds, MESSAGE_API.read_timeout_seconds),
-                    headers={"Accept": "text/event-stream", "Cache-Control": "no-cache"},
-                ) as response:
-                    response.raise_for_status()
+                periodic_refresh_shutdown = threading.Event()
+                periodic_refresh_thread = threading.Thread(
+                    target=self._refresh_state_periodically,
+                    args=(poll_session, periodic_refresh_shutdown),
+                    daemon=True,
+                )
+                periodic_refresh_thread.start()
 
-                    for raw_event in self._iter_sse_data(response):
-                        try:
-                            payload = json.loads(raw_event)
-                        except json.JSONDecodeError:
-                            continue
+                try:
+                    with session.get(
+                        MESSAGE_API.stream_url,
+                        stream=True,
+                        timeout=(MESSAGE_API.connect_timeout_seconds, MESSAGE_API.read_timeout_seconds),
+                        headers={"Accept": "text/event-stream", "Cache-Control": "no-cache"},
+                    ) as response:
+                        response.raise_for_status()
 
-                        background_id = self._extract_background_id(payload)
-                        if background_id:
-                            self._on_background_id(background_id)
+                        for raw_event in self._iter_sse_data(response):
+                            try:
+                                payload = json.loads(raw_event)
+                            except json.JSONDecodeError:
+                                continue
 
-                        if self._shutdown.is_set():
-                            break
+                            background_id = self._extract_background_id(payload)
+                            if background_id:
+                                self._on_background_id(background_id)
 
-            except Exception as exc:
-                if not self._shutdown.is_set():
-                    print(f"Background stream disconnected, reconnecting: {exc}")
-                    self._sleep_until_retry(MESSAGE_API.reconnect_delay_seconds)
+                            if self._shutdown.is_set():
+                                break
+
+                except Exception as exc:
+                    if not self._shutdown.is_set():
+                        print(f"Background stream disconnected, reconnecting: {exc}")
+                        self._sleep_until_retry(MESSAGE_API.reconnect_delay_seconds)
+                finally:
+                    periodic_refresh_shutdown.set()
+                    periodic_refresh_thread.join(timeout=1.0)
+        finally:
+            session.close()
+            poll_session.close()
 
     def _fetch_background_state(self, session: requests.Session) -> None:
         response = session.get(
@@ -76,7 +92,7 @@ class BackgroundSyncClient:
     def _iter_sse_data(self, response: requests.Response) -> Iterable[str]:
         data_lines: list[str] = []
 
-        for raw_line in response.iter_lines(decode_unicode=True):
+        for raw_line in response.iter_lines(chunk_size=1, decode_unicode=True):
             if self._shutdown.is_set():
                 return
             if raw_line is None:
@@ -98,6 +114,23 @@ class BackgroundSyncClient:
 
         if data_lines:
             yield "\n".join(data_lines)
+
+    def _refresh_state_periodically(
+        self,
+        session: requests.Session,
+        stop_event: threading.Event,
+    ) -> None:
+        while not self._shutdown.is_set():
+            if stop_event.wait(MESSAGE_API.state_refresh_seconds):
+                return
+            if self._shutdown.is_set():
+                return
+
+            try:
+                self._fetch_background_state(session)
+            except Exception as exc:
+                if not self._shutdown.is_set():
+                    print(f"Background periodic state refresh failed: {exc}")
 
     def _sleep_until_retry(self, seconds: float) -> None:
         deadline = time.monotonic() + seconds
