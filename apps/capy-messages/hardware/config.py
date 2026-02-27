@@ -24,6 +24,32 @@ def _bool_env(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _resolve_backlight_dir() -> Path:
+    configured = os.getenv("BACKLIGHT_DIR")
+    if configured:
+        return Path(configured)
+
+    backlight_root = Path("/sys/class/backlight")
+    if not backlight_root.exists():
+        return Path("/sys/class/backlight/10-0045")
+
+    candidates = sorted(path for path in backlight_root.iterdir() if path.is_dir())
+    if not candidates:
+        return Path("/sys/class/backlight/10-0045")
+
+    # Prefer the common DSI backlight controller names first.
+    for preferred_name in ("11-0045", "10-0045"):
+        preferred = backlight_root / preferred_name
+        if preferred in candidates:
+            return preferred
+
+    for candidate in candidates:
+        if (candidate / "brightness").exists() and (candidate / "max_brightness").exists():
+            return candidate
+
+    return candidates[0]
+
+
 @dataclass(frozen=True)
 class BacklightConfig:
     dir: Path
@@ -68,7 +94,7 @@ PIR_PIN = _int_env("PIR_PIN", 14)
 OFF_DELAY_SECONDS = _float_env("OFF_DELAY_SECONDS", 15.0)
 ANIMATION_FRAME_DELAY_SECONDS = _float_env("ANIMATION_FRAME_DELAY_SECONDS", 0.02)
 
-_backlight_dir = Path(os.getenv("BACKLIGHT_DIR", "/sys/class/backlight/10-0045"))
+_backlight_dir = _resolve_backlight_dir()
 _backlight_brightness = _backlight_dir / "brightness"
 _backlight_max = _backlight_dir / "max_brightness"
 
