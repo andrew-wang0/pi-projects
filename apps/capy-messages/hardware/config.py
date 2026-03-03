@@ -40,7 +40,7 @@ def _resolve_backlight_dir() -> Path:
         return Path("/sys/class/backlight/10-0045")
 
     # Prefer the common DSI backlight controller names first.
-    for preferred_name in ("11-0045", "10-0045"):
+    for preferred_name in ("10-0045", "11-0045"):
         preferred = backlight_root / preferred_name
         if preferred in candidates:
             return preferred
