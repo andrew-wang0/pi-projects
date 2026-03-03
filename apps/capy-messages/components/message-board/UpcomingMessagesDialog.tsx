@@ -201,8 +201,8 @@ function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) 
             display: "block",
             width: "100%",
             whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            overflowWrap: "anywhere",
+            wordBreak: "normal",
+            overflowWrap: "normal",
             fontSize: `${fontSize}px`,
             textShadow: background.id === "default" ? "none" : "0 1px 2px rgba(0, 0, 0, 0.3)",
           }}
@@ -398,8 +398,8 @@ export default function UpcomingMessagesDialog({
                         fontSize: "1.1rem",
                         fontWeight: 700,
                         whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        overflowWrap: "anywhere",
+                        wordBreak: "normal",
+                        overflowWrap: "normal",
                       }}
                     >
                       {activeMessage?.message}

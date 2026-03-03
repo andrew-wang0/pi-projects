@@ -77,8 +77,8 @@ export default function StandbyDisplay({
             display: "block",
             width: "100%",
             whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            overflowWrap: "anywhere",
+            wordBreak: "normal",
+            overflowWrap: "normal",
             fontSize: `${standbyFontSize}px`,
           }}
         >
