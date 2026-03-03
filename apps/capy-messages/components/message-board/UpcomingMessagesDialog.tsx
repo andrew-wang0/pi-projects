@@ -29,6 +29,7 @@ import { getBackgroundOption, getBackgroundTextColor } from "@/lib/background-op
 import type { ScheduledMessage } from "@/lib/message-store";
 
 import { IMAGE_HEIGHT, IMAGE_WIDTH } from "./constants";
+import { findBestFittingFontSize } from "./utils";
 
 type UpcomingMessagesDialogProps = {
   open: boolean;
@@ -102,30 +103,16 @@ function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) 
     }
 
     const fitText = () => {
-      const maxWidth = boundsEl.clientWidth;
-      const maxHeight = boundsEl.clientHeight;
-
-      if (maxWidth <= 0 || maxHeight <= 0) {
-        return;
-      }
-
-      let low = 4;
-      let high = Math.max(56, Math.ceil(Math.max(maxWidth, maxHeight) * 1.3));
-      let best = low;
-
-      while (low <= high) {
-        const mid = Math.floor((low + high) / 2);
-        textEl.style.fontSize = `${mid}px`;
-
-        const fits = textEl.scrollWidth <= maxWidth && textEl.scrollHeight <= maxHeight;
-
-        if (fits) {
-          best = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
-      }
+      const best = findBestFittingFontSize({
+        textEl,
+        boundsEl,
+        text: schedule.message,
+        minFontSize: 4,
+        maxFontSize: Math.max(
+          56,
+          Math.ceil(Math.max(boundsEl.clientWidth, boundsEl.clientHeight) * 1.3),
+        ),
+      });
 
       textEl.style.fontSize = `${best}px`;
       setFontSize(best);

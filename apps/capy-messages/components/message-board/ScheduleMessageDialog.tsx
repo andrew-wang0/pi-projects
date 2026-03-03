@@ -24,7 +24,7 @@ import type { ScheduledMessage } from "@/lib/message-store";
 
 import BackgroundPicker from "./BackgroundPicker";
 import { MAX_MESSAGE_LENGTH, SCHEDULE_STEP_COUNT } from "./constants";
-import { toBoundsStyle } from "./utils";
+import { findBestFittingFontSize, toBoundsStyle } from "./utils";
 
 type ScheduleMessageDialogProps = {
   open: boolean;
@@ -90,30 +90,16 @@ function SchedulePreview({ message, backgroundId }: { message: string; backgroun
     }
 
     const fitText = () => {
-      const maxWidth = boundsEl.clientWidth;
-      const maxHeight = boundsEl.clientHeight;
-
-      if (maxWidth <= 0 || maxHeight <= 0) {
-        return;
-      }
-
-      let low = 6;
-      let high = Math.max(120, Math.ceil(Math.max(maxWidth, maxHeight) * 1.4));
-      let best = low;
-
-      while (low <= high) {
-        const mid = Math.floor((low + high) / 2);
-        textEl.style.fontSize = `${mid}px`;
-
-        const fits = textEl.scrollWidth <= maxWidth && textEl.scrollHeight <= maxHeight;
-
-        if (fits) {
-          best = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
-      }
+      const best = findBestFittingFontSize({
+        textEl,
+        boundsEl,
+        text: message,
+        minFontSize: 6,
+        maxFontSize: Math.max(
+          120,
+          Math.ceil(Math.max(boundsEl.clientWidth, boundsEl.clientHeight) * 1.4),
+        ),
+      });
 
       textEl.style.fontSize = `${best}px`;
       setFontSize(best);

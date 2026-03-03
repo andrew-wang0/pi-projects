@@ -15,7 +15,7 @@ import ScheduleMessageDialog from "./ScheduleMessageDialog";
 import SettingsSpeedDial from "./SettingsSpeedDial";
 import StandbyDisplay from "./StandbyDisplay";
 import UpcomingMessagesDialog from "./UpcomingMessagesDialog";
-import { areMessageStatesEqual, toBoundsStyle } from "./utils";
+import { areMessageStatesEqual, findBestFittingFontSize, toBoundsStyle } from "./utils";
 
 type MessageBoardProps = {
   initialState: MessageState;
@@ -266,30 +266,16 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
     }
 
     const fitText = () => {
-      const maxWidth = boundsEl.clientWidth;
-      const maxHeight = boundsEl.clientHeight;
-
-      if (maxWidth <= 0 || maxHeight <= 0) {
-        return;
-      }
-
-      let low = 8;
-      let high = Math.max(220, Math.ceil(Math.max(maxWidth, maxHeight) * 1.5));
-      let best = low;
-
-      while (low <= high) {
-        const mid = Math.floor((low + high) / 2);
-        textEl.style.fontSize = `${mid}px`;
-
-        const fits = textEl.scrollWidth <= maxWidth && textEl.scrollHeight <= maxHeight;
-
-        if (fits) {
-          best = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
-      }
+      const best = findBestFittingFontSize({
+        textEl,
+        boundsEl,
+        text: state.activeMessage,
+        minFontSize: 8,
+        maxFontSize: Math.max(
+          220,
+          Math.ceil(Math.max(boundsEl.clientWidth, boundsEl.clientHeight) * 1.5),
+        ),
+      });
 
       textEl.style.fontSize = `${best}px`;
       setStandbyFontSize(best);
