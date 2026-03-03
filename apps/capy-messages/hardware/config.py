@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 import os
 
+DEFAULT_BACKLIGHT_MAX_BRIGHTNESS = 255
+
 
 def _int_env(name: str, default: int) -> int:
     value = os.getenv(name)
@@ -141,4 +143,11 @@ def read_backlight_max_brightness() -> int:
     override = os.getenv("BACKLIGHT_MAX_BRIGHTNESS")
     if override is not None:
         return int(override)
-    return int(BACKLIGHT.max_brightness_file.read_text().strip())
+    try:
+        return int(BACKLIGHT.max_brightness_file.read_text().strip())
+    except (OSError, ValueError) as exc:
+        print(
+            f"Backlight max_brightness read failed ({BACKLIGHT.max_brightness_file}): {exc}. "
+            f"Using fallback={DEFAULT_BACKLIGHT_MAX_BRIGHTNESS}."
+        )
+        return DEFAULT_BACKLIGHT_MAX_BRIGHTNESS
