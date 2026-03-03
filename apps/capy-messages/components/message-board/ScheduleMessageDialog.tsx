@@ -17,14 +17,14 @@ import {
 import { PickersDay, type PickersDayProps } from "@mui/x-date-pickers/PickersDay";
 import { StaticDateTimePicker } from "@mui/x-date-pickers/StaticDateTimePicker";
 import type { Dayjs } from "dayjs";
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 
 import { getBackgroundOption, getBackgroundTextColor } from "@/lib/background-options";
 import type { ScheduledMessage } from "@/lib/message-store";
 
 import BackgroundPicker from "./BackgroundPicker";
 import { MAX_MESSAGE_LENGTH, SCHEDULE_STEP_COUNT } from "./constants";
-import { findBestFittingFontSize, toBoundsStyle } from "./utils";
+import { toBoundsStyle } from "./utils";
 
 type ScheduleMessageDialogProps = {
   open: boolean;
@@ -77,48 +77,6 @@ function CalendarDayWithCount({ day, outsideCurrentMonth, countsByDay, ...other 
 function SchedulePreview({ message, backgroundId }: { message: string; backgroundId: string }) {
   const background = getBackgroundOption(backgroundId);
   const boundsStyle = useMemo(() => toBoundsStyle(background.bounds), [background.bounds]);
-  const textRef = useRef<HTMLSpanElement | null>(null);
-  const textBoundsRef = useRef<HTMLDivElement | null>(null);
-  const [fontSize, setFontSize] = useState(14);
-
-  useLayoutEffect(() => {
-    const textEl = textRef.current;
-    const boundsEl = textBoundsRef.current;
-
-    if (!textEl || !boundsEl) {
-      return;
-    }
-
-    const fitText = () => {
-      const best = findBestFittingFontSize({
-        textEl,
-        boundsEl,
-        text: message,
-        minFontSize: 6,
-        maxFontSize: Math.max(
-          120,
-          Math.ceil(Math.max(boundsEl.clientWidth, boundsEl.clientHeight) * 1.4),
-        ),
-      });
-
-      textEl.style.fontSize = `${best}px`;
-      setFontSize(best);
-    };
-
-    fitText();
-
-    const observer = new ResizeObserver(() => {
-      fitText();
-    });
-
-    observer.observe(boundsEl);
-    window.addEventListener("resize", fitText);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", fitText);
-    };
-  }, [message, background.id, boundsStyle.height, boundsStyle.width]);
 
   return (
     <Box
@@ -149,7 +107,6 @@ function SchedulePreview({ message, backgroundId }: { message: string; backgroun
       ) : null}
 
       <Box
-        ref={textBoundsRef}
         sx={{
           position: "absolute",
           ...boundsStyle,
@@ -160,7 +117,6 @@ function SchedulePreview({ message, backgroundId }: { message: string; backgroun
         }}
       >
         <Typography
-          ref={textRef}
           component="span"
           sx={{
             color: (theme) => getBackgroundTextColor(background) ?? theme.palette.text.primary,
@@ -173,7 +129,7 @@ function SchedulePreview({ message, backgroundId }: { message: string; backgroun
             whiteSpace: "pre-wrap",
             wordBreak: "normal",
             overflowWrap: "normal",
-            fontSize: `${fontSize}px`,
+            fontSize: "12px",
           }}
         >
           {message}

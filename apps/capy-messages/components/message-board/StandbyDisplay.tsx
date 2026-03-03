@@ -14,8 +14,6 @@ type StandbyDisplayProps = {
   message: string;
   textBoundsStyle: BoundsStyle;
   standbyFontSize: number;
-  textRef: React.RefObject<HTMLSpanElement | null>;
-  textBoundsRef: React.RefObject<HTMLDivElement | null>;
 };
 
 const StandbyBackground = React.memo(function StandbyBackground({ src }: { src: string | null }) {
@@ -46,15 +44,12 @@ export default function StandbyDisplay({
   message,
   textBoundsStyle,
   standbyFontSize,
-  textRef,
-  textBoundsRef,
 }: StandbyDisplayProps) {
   return (
     <>
       <StandbyBackground src={background.src} />
 
       <Box
-        ref={textBoundsRef}
         sx={{
           position: "absolute",
           ...textBoundsStyle,
@@ -65,7 +60,6 @@ export default function StandbyDisplay({
         }}
       >
         <Typography
-          ref={textRef}
           component="span"
           sx={{
             color: (theme) => getBackgroundTextColor(background) ?? theme.palette.text.primary,

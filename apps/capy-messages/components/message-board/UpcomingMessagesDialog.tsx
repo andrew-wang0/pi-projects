@@ -23,13 +23,12 @@ import {
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 import { PickersDay, type PickersDayProps } from "@mui/x-date-pickers/PickersDay";
 import dayjs, { type Dayjs } from "dayjs";
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import { getBackgroundOption, getBackgroundTextColor } from "@/lib/background-options";
 import type { ScheduledMessage } from "@/lib/message-store";
 
 import { IMAGE_HEIGHT, IMAGE_WIDTH } from "./constants";
-import { findBestFittingFontSize } from "./utils";
 
 type UpcomingMessagesDialogProps = {
   open: boolean;
@@ -77,9 +76,6 @@ function CalendarDayWithCount({ day, outsideCurrentMonth, countsByDay, ...other 
 
 function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) {
   const background = getBackgroundOption(schedule.backgroundId);
-  const textRef = useRef<HTMLSpanElement | null>(null);
-  const textBoundsRef = useRef<HTMLDivElement | null>(null);
-  const [fontSize, setFontSize] = useState(8);
 
   const scaledBounds = useMemo(() => {
     const scaleX = PREVIEW_WIDTH / IMAGE_WIDTH;
@@ -93,45 +89,6 @@ function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) 
       height: (y2 - y1) * scaleY,
     };
   }, [background.bounds]);
-
-  useLayoutEffect(() => {
-    const textEl = textRef.current;
-    const boundsEl = textBoundsRef.current;
-
-    if (!textEl || !boundsEl) {
-      return;
-    }
-
-    const fitText = () => {
-      const best = findBestFittingFontSize({
-        textEl,
-        boundsEl,
-        text: schedule.message,
-        minFontSize: 4,
-        maxFontSize: Math.max(
-          56,
-          Math.ceil(Math.max(boundsEl.clientWidth, boundsEl.clientHeight) * 1.3),
-        ),
-      });
-
-      textEl.style.fontSize = `${best}px`;
-      setFontSize(best);
-    };
-
-    fitText();
-
-    const observer = new ResizeObserver(() => {
-      fitText();
-    });
-
-    observer.observe(boundsEl);
-    window.addEventListener("resize", fitText);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", fitText);
-    };
-  }, [schedule.message, schedule.backgroundId, scaledBounds.height, scaledBounds.width]);
 
   return (
     <Box
@@ -164,7 +121,6 @@ function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) 
       ) : null}
 
       <Box
-        ref={textBoundsRef}
         sx={{
           position: "absolute",
           left: scaledBounds.left,
@@ -178,7 +134,6 @@ function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) 
         }}
       >
         <Typography
-          ref={textRef}
           component="span"
           sx={{
             color: (theme) => getBackgroundTextColor(background) ?? theme.palette.text.primary,
@@ -190,7 +145,7 @@ function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) 
             whiteSpace: "pre-wrap",
             wordBreak: "normal",
             overflowWrap: "normal",
-            fontSize: `${fontSize}px`,
+            fontSize: "8px",
             textShadow: background.id === "default" ? "none" : "0 1px 2px rgba(0, 0, 0, 0.3)",
           }}
         >

@@ -4,7 +4,7 @@ import { Box } from "@mui/material";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import dayjs, { type Dayjs } from "dayjs";
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type BackgroundOption, getBackgroundOption } from "@/lib/background-options";
 import type { MessageState } from "@/lib/message-store";
@@ -15,13 +15,15 @@ import ScheduleMessageDialog from "./ScheduleMessageDialog";
 import SettingsSpeedDial from "./SettingsSpeedDial";
 import StandbyDisplay from "./StandbyDisplay";
 import UpcomingMessagesDialog from "./UpcomingMessagesDialog";
-import { areMessageStatesEqual, findBestFittingFontSize, toBoundsStyle } from "./utils";
+import { areMessageStatesEqual, toBoundsStyle } from "./utils";
 
 type MessageBoardProps = {
   initialState: MessageState;
 };
 
 type DialogMode = "none" | "edit" | "schedule" | "upcoming";
+const STANDBY_FONT_SIZE = 42;
+
 function earliestValidTimeForDay(day: Dayjs) {
   const dayStart = day.startOf("day");
   const earliestNow = dayjs().add(1, "minute").startOf("minute");
@@ -59,13 +61,10 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
-  const [standbyFontSize, setStandbyFontSize] = useState(72);
 
   const inactivityTimeoutRef = useRef<number | null>(null);
   const stateRef = useRef<MessageState>(initialState);
   const latestRefreshRequestIdRef = useRef(0);
-  const standbyTextRef = useRef<HTMLSpanElement | null>(null);
-  const standbyTextBoundsRef = useRef<HTMLDivElement | null>(null);
   const editInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const scheduleInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
@@ -256,45 +255,6 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
       window.clearTimeout(timeoutId);
     };
   }, [nextScheduledAt, refreshState]);
-
-  useLayoutEffect(() => {
-    const textEl = standbyTextRef.current;
-    const boundsEl = standbyTextBoundsRef.current;
-
-    if (!textEl || !boundsEl) {
-      return;
-    }
-
-    const fitText = () => {
-      const best = findBestFittingFontSize({
-        textEl,
-        boundsEl,
-        text: state.activeMessage,
-        minFontSize: 8,
-        maxFontSize: Math.max(
-          220,
-          Math.ceil(Math.max(boundsEl.clientWidth, boundsEl.clientHeight) * 1.5),
-        ),
-      });
-
-      textEl.style.fontSize = `${best}px`;
-      setStandbyFontSize(best);
-    };
-
-    fitText();
-
-    const observer = new ResizeObserver(() => {
-      fitText();
-    });
-
-    observer.observe(boundsEl);
-    window.addEventListener("resize", fitText);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", fitText);
-    };
-  }, [state.activeMessage, state.activeBackgroundId]);
 
   const openEdit = () => {
     setSpeedDialOpen(false);
@@ -510,9 +470,7 @@ export default function MessageBoard({ initialState }: MessageBoardProps) {
           background={selectedBackground}
           message={state.activeMessage}
           textBoundsStyle={textBoundsStyle}
-          standbyFontSize={standbyFontSize}
-          textRef={standbyTextRef}
-          textBoundsRef={standbyTextBoundsRef}
+          standbyFontSize={STANDBY_FONT_SIZE}
         />
 
         <SettingsSpeedDial
