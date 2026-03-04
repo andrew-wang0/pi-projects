@@ -5,7 +5,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import React from "react";
 
 import MuiProvider from "@/components/providers/MuiProvider";
-import SWRegister from "@/components/pwa/SWRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,7 +19,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Capybara Messages",
   description: "Messages from Mr. Capybara",
-  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -43,10 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <MuiProvider>
-          {children}
-          <SWRegister />
-        </MuiProvider>
+        <MuiProvider>{children}</MuiProvider>
       </body>
     </html>
   );
