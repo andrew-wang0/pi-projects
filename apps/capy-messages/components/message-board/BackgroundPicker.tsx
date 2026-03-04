@@ -17,7 +17,8 @@ export default function BackgroundPicker({
       sx={{
         p: 0,
         display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+        gridTemplateRows: "repeat(2, minmax(0, 1fr))",
         gap: 1,
       }}
     >

@@ -109,6 +109,18 @@ export const BACKGROUND_OPTIONS: BackgroundOption[] = [
       y2: 250,
     },
   },
+  {
+    id: "adel",
+    label: "Adel",
+    src: "/backgrounds/adel.jpg",
+    textColor: "#fff",
+    bounds: {
+      x1: 10,
+      y1: 10,
+      x2: 790,
+      y2: 470,
+    },
+  },
 ];
 
 export const DEFAULT_BACKGROUND_ID = "default";

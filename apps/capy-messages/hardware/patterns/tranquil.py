@@ -27,7 +27,8 @@ def render_tranquil_frame(pixel_count: int, frame: int) -> list[RGB]:
         flicker_micro = 0.5 + 0.5 * math.sin(frame * 0.52 - i * 2.11)
         flicker = clamp(flicker_wave * flicker_micro, 0.0, 1.0) ** 3.6
         pink_glow_alpha = clamp(0.06 + 0.20 * flicker, 0.0, 0.24)
-        white_alpha = clamp(0.01 + 0.05 * (flicker * flicker), 0.0, 0.06)
+        sparkle_burst = clamp((flicker - 0.55) / 0.45, 0.0, 1.0) ** 2.0
+        white_alpha = clamp(0.02 + 0.10 * (flicker * flicker) + 0.20 * sparkle_burst, 0.0, 0.22)
 
         pink_glow = blend_rgb(base, (255, 98, 198), pink_glow_alpha)
         colors.append(blend_rgb(pink_glow, (255, 238, 246), white_alpha))

@@ -8,6 +8,7 @@ SLEEP_PATTERN = "sleep"
 TAN_BROWN_PATTERN = "tan_brown"
 NIGHT_PATTERN = "night"
 TRANQUIL_PATTERN = "tranquil"
+ADEL_PATTERN = "adel"
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ BACKGROUND_LIGHTING: tuple[BackgroundLighting, ...] = (
     BackgroundLighting(background_id="sleep", label="Sleep", pattern=SLEEP_PATTERN),
     BackgroundLighting(background_id="night", label="Night", pattern=NIGHT_PATTERN),
     BackgroundLighting(background_id="tranquil", label="Tranquil", pattern=TRANQUIL_PATTERN),
+    BackgroundLighting(background_id="adel", label="Adel", pattern=ADEL_PATTERN),
 )
 
 DEFAULT_BACKGROUND_ID = "default"

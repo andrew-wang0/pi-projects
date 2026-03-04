@@ -1,6 +1,7 @@
 import random
 
 from backgrounds import (
+    ADEL_PATTERN,
     BEACH_PATTERN,
     FIRE_PATTERN,
     FRANCES_PATTERN,
@@ -10,6 +11,7 @@ from backgrounds import (
     TRANQUIL_PATTERN,
 )
 
+from .adel import render_adel_frame
 from .beach import render_beach_frame
 from .common import RGB, blend_rgb
 from .fire import FirePattern
@@ -42,6 +44,11 @@ class PatternRenderer:
 
         if pattern == FIRE_PATTERN:
             target_colors = self._fire_pattern.render(frame)
+        elif pattern == ADEL_PATTERN:
+            # Intentionally bypass smoothing so this mode can flash at max frame rate.
+            target_colors = render_adel_frame(self._pixel_count, self._rng)
+            self._smoothed_colors = target_colors.copy()
+            return target_colors
         elif pattern == TAN_BROWN_PATTERN:
             target_colors = render_tan_brown_frame(self._pixel_count, frame)
         elif pattern == BEACH_PATTERN:
