@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { type BackgroundOption, getBackgroundOption } from "@/lib/background-options";
 import type { MessageState } from "@/lib/message-store";
 
-import { EDIT_STEP_COUNT, SCHEDULE_STEP_COUNT } from "./constants";
+import { EDIT_STEP_COUNT, SCHEDULE_STEP_COUNT, STANDBY_FONT_SIZE } from "./constants";
 import EditMessageDialog from "./EditMessageDialog";
 import ScheduleMessageDialog from "./ScheduleMessageDialog";
 import SettingsSpeedDial from "./SettingsSpeedDial";
@@ -22,7 +22,6 @@ type MessageBoardProps = {
 };
 
 type DialogMode = "none" | "edit" | "schedule" | "upcoming";
-const STANDBY_FONT_SIZE = 42;
 
 function earliestValidTimeForDay(day: Dayjs) {
   const dayStart = day.startOf("day");

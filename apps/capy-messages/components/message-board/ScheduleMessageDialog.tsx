@@ -23,7 +23,7 @@ import { getBackgroundOption, getBackgroundTextColor } from "@/lib/background-op
 import type { ScheduledMessage } from "@/lib/message-store";
 
 import BackgroundPicker from "./BackgroundPicker";
-import { MAX_MESSAGE_LENGTH, SCHEDULE_STEP_COUNT } from "./constants";
+import { MAX_MESSAGE_LENGTH, SCHEDULE_STEP_COUNT, STANDBY_FONT_SIZE_RELATIVE } from "./constants";
 import { toBoundsStyle } from "./utils";
 
 type ScheduleMessageDialogProps = {
@@ -83,6 +83,7 @@ function SchedulePreview({ message, backgroundId }: { message: string; backgroun
       sx={{
         width: "100%",
         aspectRatio: "5 / 3",
+        containerType: "size",
         position: "relative",
         overflow: "hidden",
         border: "1px solid",
@@ -129,7 +130,7 @@ function SchedulePreview({ message, backgroundId }: { message: string; backgroun
             whiteSpace: "pre-wrap",
             wordBreak: "normal",
             overflowWrap: "normal",
-            fontSize: "12px",
+            fontSize: STANDBY_FONT_SIZE_RELATIVE,
           }}
         >
           {message}

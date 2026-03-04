@@ -28,7 +28,7 @@ import React, { useMemo, useState } from "react";
 import { getBackgroundOption, getBackgroundTextColor } from "@/lib/background-options";
 import type { ScheduledMessage } from "@/lib/message-store";
 
-import { IMAGE_HEIGHT, IMAGE_WIDTH } from "./constants";
+import { IMAGE_HEIGHT, IMAGE_WIDTH, STANDBY_FONT_SIZE_RELATIVE } from "./constants";
 
 type UpcomingMessagesDialogProps = {
   open: boolean;
@@ -96,6 +96,7 @@ function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) 
         width: PREVIEW_WIDTH,
         height: PREVIEW_HEIGHT,
         maxWidth: "44%",
+        containerType: "size",
         position: "relative",
         overflow: "hidden",
         border: "1px solid",
@@ -145,7 +146,7 @@ function MessageBackgroundPreview({ schedule }: { schedule: ScheduledMessage }) 
             whiteSpace: "pre-wrap",
             wordBreak: "normal",
             overflowWrap: "normal",
-            fontSize: "8px",
+            fontSize: STANDBY_FONT_SIZE_RELATIVE,
             textShadow: background.id === "default" ? "none" : "0 1px 2px rgba(0, 0, 0, 0.3)",
           }}
         >
