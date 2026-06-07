@@ -12,19 +12,19 @@
   "dependencies": {
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
-    "@mui/icons-material": "7.3.8",
-    "@mui/material": "7.3.8",
-    "@mui/material-nextjs": "7.3.8",
-    "@mui/x-date-pickers": "8.27.0",
-    "dayjs": "1.11.19",
-    "next": "16.1.6",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "@mui/icons-material": "9.0.1",
+    "@mui/material": "9.0.1",
+    "@mui/material-nextjs": "9.0.1",
+    "@mui/x-date-pickers": "9.4.0",
+    "dayjs": "1.11.21",
+    "next": "16.2.7",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
   },
   "devDependencies": {
-    "@types/node": "^25.2.3",
-    "@types/react": "^19.2.14",
+    "@types/node": "^25.9.2",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }
