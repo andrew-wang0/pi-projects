@@ -41,7 +41,7 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
-  apps/capy-messages:
+  apps/cappy-messages:
     dependencies:
       "@emotion/react":
         specifier: 11.14.0
