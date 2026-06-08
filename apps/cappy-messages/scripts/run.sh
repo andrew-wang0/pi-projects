@@ -24,7 +24,7 @@ WEB_PID=$!
 
 until curl -sf http://localhost:3000 > /dev/null 2>&1; do sleep 1; done
 
-chromium-browser --kiosk --noerrdialogs --disable-infobars --no-first-run \
+chromium --kiosk --noerrdialogs --disable-infobars --no-first-run \
   --ozone-platform=wayland http://localhost:3000 &
 CHROMIUM_PID=$!
 
