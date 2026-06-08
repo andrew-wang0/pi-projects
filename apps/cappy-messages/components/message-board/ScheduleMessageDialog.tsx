@@ -14,7 +14,7 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { PickersDay, type PickersDayProps } from "@mui/x-date-pickers/PickersDay";
+import { PickerDay, type PickerDayProps } from "@mui/x-date-pickers/PickerDay";
 import { StaticDateTimePicker } from "@mui/x-date-pickers/StaticDateTimePicker";
 import type { Dayjs } from "dayjs";
 import React, { useEffect, useMemo } from "react";
@@ -44,7 +44,7 @@ type ScheduleMessageDialogProps = {
   inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
 };
 
-type DayCountProps = PickersDayProps & {
+type DayCountProps = PickerDayProps & {
   countsByDay?: Record<string, number>;
 };
 
@@ -69,7 +69,7 @@ function CalendarDayWithCount({ day, outsideCurrentMonth, countsByDay, ...other 
         },
       }}
     >
-      <PickersDay day={day} outsideCurrentMonth={outsideCurrentMonth} {...other} />
+      <PickerDay day={day} outsideCurrentMonth={outsideCurrentMonth} {...other} />
     </Badge>
   );
 }

@@ -3,7 +3,7 @@ import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CloseIcon from "@mui/icons-material/Close";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import {
   Alert,
   AppBar,
@@ -21,7 +21,7 @@ import {
   Typography,
 } from "@mui/material";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
-import { PickersDay, type PickersDayProps } from "@mui/x-date-pickers/PickersDay";
+import { PickerDay, type PickerDayProps } from "@mui/x-date-pickers/PickerDay";
 import dayjs, { type Dayjs } from "dayjs";
 import React, { useMemo, useState } from "react";
 
@@ -41,7 +41,7 @@ type UpcomingMessagesDialogProps = {
   onDeleteSchedule: (id: string) => void;
 };
 
-type DayCountProps = PickersDayProps & {
+type DayCountProps = PickerDayProps & {
   countsByDay?: Record<string, number>;
 };
 
@@ -69,7 +69,7 @@ function CalendarDayWithCount({ day, outsideCurrentMonth, countsByDay, ...other 
         },
       }}
     >
-      <PickersDay day={day} outsideCurrentMonth={outsideCurrentMonth} {...other} />
+      <PickerDay day={day} outsideCurrentMonth={outsideCurrentMonth} {...other} />
     </Badge>
   );
 }
@@ -293,14 +293,18 @@ export default function UpcomingMessagesDialog({
           </Box>
         ) : (
           <Stack spacing={2.5}>
-            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-              <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", justifyContent: "space-between" }}
+            >
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                 <CalendarMonthIcon sx={{ fontSize: 24 }} />
                 <Typography sx={{ fontSize: "1.1rem", fontWeight: 700 }}>
                   {selectedDay.format("dddd, MMM D")} ({selectedDayMessages.length})
                 </Typography>
               </Stack>
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                 {hasSelectedDayMessages ? (
                   <Typography color="text.secondary" sx={{ fontSize: "0.95rem", fontWeight: 700 }}>
                     {safeMessageIndex + 1} / {selectedDayMessages.length}
@@ -332,8 +336,7 @@ export default function UpcomingMessagesDialog({
                 <Stack
                   direction="row"
                   spacing={1.5}
-                  alignItems="stretch"
-                  sx={{ minWidth: 0, flexGrow: 1 }}
+                  sx={{ minWidth: 0, flexGrow: 1, alignItems: "stretch" }}
                 >
                   <Stack sx={{ minWidth: 0, flexGrow: 1 }} spacing={1.25}>
                     <Typography
