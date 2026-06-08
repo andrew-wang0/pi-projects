@@ -14,7 +14,7 @@ pkill -x squeekboard 2> /dev/null && sleep 1 || true
 SQUEEKBOARD_LAYER=overlay squeekboard &
 SQUEEKBOARD_PID=$!
 
-python3 "$APP_DIR/hardware/main.py" &
+"$APP_DIR/hardware/.venv/bin/python" "$APP_DIR/hardware/main.py" &
 HARDWARE_PID=$!
 
 pnpm --filter cappy-messages start &
