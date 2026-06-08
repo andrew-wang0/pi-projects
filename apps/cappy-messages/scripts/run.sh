@@ -10,6 +10,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+pkill -x squeekboard 2> /dev/null && sleep 1 || true
 SQUEEKBOARD_LAYER=overlay squeekboard &
 SQUEEKBOARD_PID=$!
 
