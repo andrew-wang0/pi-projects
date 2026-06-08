@@ -4,9 +4,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+CHROMIUM_PID=""
+
 cleanup() {
-  kill "$SQUEEKBOARD_PID" "$HARDWARE_PID" "$WEB_PID" 2> /dev/null || true
-  wait "$SQUEEKBOARD_PID" "$HARDWARE_PID" "$WEB_PID" 2> /dev/null || true
+  kill "$SQUEEKBOARD_PID" "$HARDWARE_PID" "$WEB_PID" ${CHROMIUM_PID:+"$CHROMIUM_PID"} 2> /dev/null || true
+  wait "$SQUEEKBOARD_PID" "$HARDWARE_PID" "$WEB_PID" ${CHROMIUM_PID:+"$CHROMIUM_PID"} 2> /dev/null || true
 }
 trap cleanup EXIT INT TERM
 
@@ -20,4 +22,10 @@ HARDWARE_PID=$!
 pnpm --filter cappy-messages start &
 WEB_PID=$!
 
-wait -n "$SQUEEKBOARD_PID" "$HARDWARE_PID" "$WEB_PID"
+until curl -sf http://localhost:3000 > /dev/null 2>&1; do sleep 1; done
+
+chromium-browser --kiosk --noerrdialogs --disable-infobars --no-first-run \
+  --ozone-platform=wayland http://localhost:3000 &
+CHROMIUM_PID=$!
+
+wait -n "$SQUEEKBOARD_PID" "$HARDWARE_PID" "$WEB_PID" "$CHROMIUM_PID"
