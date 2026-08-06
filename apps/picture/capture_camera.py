@@ -165,7 +165,44 @@ class CaptureCamera:
 
         if not photos:
             return None
-        return max(photos, key=lambda path: path.stat().st_mtime_ns)
+        # Generated names use a fixed-width timestamp, so lexical order is
+        # capture order even if copying files changes their filesystem mtime.
+        return max(photos, key=lambda path: path.name)
+
+    @staticmethod
+    def latest_media(storage: StorageConfig) -> Path | None:
+        try:
+            media = (
+                *storage.photos_dir.glob("picture_*.jpg"),
+                *storage.videos_dir.glob("video_*.mp4"),
+            )
+        except OSError:
+            LOGGER.exception("Could not scan the media directories")
+            return None
+
+        if not media:
+            return None
+
+        def capture_timestamp(path: Path) -> str:
+            _prefix, _separator, timestamp = path.stem.partition("_")
+            return timestamp
+
+        return max(media, key=capture_timestamp)
+
+    @staticmethod
+    def media_size_bytes(storage: StorageConfig) -> int:
+        total = 0
+        for directory in (storage.photos_dir, storage.videos_dir):
+            try:
+                paths = directory.rglob("*")
+                for path in paths:
+                    if path.is_file() and not path.is_symlink():
+                        total += path.stat().st_size
+            except OSError:
+                LOGGER.exception("Could not calculate media usage in %s", directory)
+                # Fail closed so an unreadable directory cannot bypass the cap.
+                return storage.max_bytes
+        return total
 
     @staticmethod
     def _new_media_path(directory: Path, prefix: str, suffix: str) -> Path:

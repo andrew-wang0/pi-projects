@@ -26,6 +26,7 @@ def main() -> None:
     config.storage.videos_dir.mkdir(parents=True, exist_ok=True)
 
     stop_event = threading.Event()
+    playback_interrupt = threading.Event()
     control_events: SimpleQueue[ControlEvent] = SimpleQueue()
 
     def request_stop(_signum=None, _frame=None) -> None:
@@ -49,6 +50,7 @@ def main() -> None:
                 assert led is not None
                 led.toggle_strip()
             else:
+                playback_interrupt.set()
                 control_events.put(event)
 
         controls = PhysicalControls(config.pins, on_control_event)
@@ -62,6 +64,7 @@ def main() -> None:
             controls=controls,
             control_events=control_events,
             stop_event=stop_event,
+            playback_interrupt=playback_interrupt,
         ).run()
     except KeyboardInterrupt:
         stop_event.set()

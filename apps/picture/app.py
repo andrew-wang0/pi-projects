@@ -42,6 +42,7 @@ class PictureApp:
         controls: PhysicalControls,
         control_events: SimpleQueue[ControlEvent],
         stop_event: threading.Event,
+        playback_interrupt: threading.Event,
     ) -> None:
         self._config = config
         self._camera = camera
@@ -50,14 +51,18 @@ class PictureApp:
         self._controls = controls
         self._control_events = control_events
         self._stop_event = stop_event
+        self._playback_interrupt = playback_interrupt
         self._phase = CapturePhase.IDLE
         self._cue_player: CuePlayer | None = None
         self._video_started_at: float | None = None
         self._pending_video_path: Path | None = None
+        self._current_media: Path | None = None
         self._idle_frame_drawn = False
 
     def run(self) -> None:
         latest_photo = self._camera.latest_photo(self._config.storage.photos_dir)
+        latest_media = self._camera.latest_media(self._config.storage)
+        self._current_media = latest_media
         if latest_photo is not None:
             try:
                 self._display.load_still(latest_photo)
@@ -65,6 +70,13 @@ class PictureApp:
                 LOGGER.exception("Could not load the latest photo: %s", latest_photo)
 
         self._led.request(True)
+        self._drain_control_events()
+        if (
+            self._phase is CapturePhase.IDLE
+            and latest_media is not None
+            and latest_media.suffix.lower() == ".mp4"
+        ):
+            self._play_video(latest_media)
 
         while not self._stop_event.is_set():
             if self._display.poll_exit_requested():
@@ -96,6 +108,11 @@ class PictureApp:
 
         if self._phase is not CapturePhase.IDLE:
             LOGGER.debug("Ignoring capture press while phase=%s", self._phase.name)
+            return
+
+        media_size = self._camera.media_size_bytes(self._config.storage)
+        if media_size >= self._config.storage.max_bytes:
+            self._show_storage_full(media_size)
             return
 
         now = time.monotonic()
@@ -156,6 +173,7 @@ class PictureApp:
         try:
             photo_path = self._camera.capture_photo()
             self._display.load_still(photo_path)
+            self._current_media = photo_path
             LOGGER.info("Photo captured: %s", photo_path)
         except Exception:
             LOGGER.exception("Photo capture failed")
@@ -186,6 +204,7 @@ class PictureApp:
         try:
             video_path = self._camera.stop_video()
             if video_path is not None:
+                self._current_media = video_path
                 LOGGER.info("Video recording saved: %s", video_path)
         except Exception:
             LOGGER.exception("Video recording did not stop cleanly")
@@ -204,32 +223,80 @@ class PictureApp:
         self._play_video(video_path)
 
     def _play_video(self, video_path: Path) -> None:
-        self._phase = CapturePhase.VIDEO_PLAYBACK
-        self._led.request(True)
-        camera_paused = False
-        try:
-            self._camera.pause_for_playback()
-            camera_paused = True
-            exit_requested = self._display.play_video(video_path, self._stop_event)
-            if exit_requested:
-                self._stop_event.set()
-        except Exception:
-            LOGGER.exception("Could not play the saved video: %s", video_path)
-        finally:
-            if camera_paused and not self._stop_event.is_set():
-                try:
-                    self._camera.resume_after_playback()
-                except Exception:
-                    LOGGER.exception("Could not restart the camera after video playback")
-                    self._stop_event.set()
-            self._return_to_idle()
+        self._current_media = video_path
 
-    def _return_to_idle(self) -> None:
+        while not self._stop_event.is_set():
+            self._phase = CapturePhase.VIDEO_PLAYBACK
+            self._led.request(True)
+            self._playback_interrupt.clear()
+            camera_paused = False
+            playback_failed = False
+            try:
+                self._camera.pause_for_playback()
+                camera_paused = True
+                exit_requested = self._display.play_video_loop(
+                    video_path,
+                    self._stop_event,
+                    self._playback_interrupt,
+                )
+                if exit_requested:
+                    self._stop_event.set()
+            except Exception:
+                playback_failed = True
+                LOGGER.exception("Could not play the saved video: %s", video_path)
+            finally:
+                if camera_paused and not self._stop_event.is_set():
+                    try:
+                        self._camera.resume_after_playback()
+                    except Exception:
+                        LOGGER.exception(
+                            "Could not restart the camera after video playback"
+                        )
+                        self._stop_event.set()
+
+            if self._stop_event.is_set():
+                break
+
+            if self._playback_interrupt.is_set():
+                self._return_to_idle(discard_capture=False)
+                self._drain_control_events()
+                if (
+                    not self._stop_event.is_set()
+                    and self._phase is CapturePhase.IDLE
+                    and self._current_media == video_path
+                ):
+                    continue
+                return
+
+            if playback_failed:
+                break
+
+        self._return_to_idle()
+
+    def _show_storage_full(self, media_size: int) -> None:
+        LOGGER.warning(
+            "Capture blocked: media usage is %.2f GB and the limit is %.2f GB",
+            media_size / 1_000_000_000,
+            self._config.storage.max_bytes / 1_000_000_000,
+        )
+        exit_requested = self._display.show_timed_message(
+            "Storage full",
+            "Delete saved photos or videos to capture again",
+            self._config.storage.full_message_seconds,
+            self._stop_event,
+        )
+        if exit_requested:
+            self._stop_event.set()
+        self._idle_frame_drawn = False
+        self._drain_control_events(ignore_capture=True)
+
+    def _return_to_idle(self, *, discard_capture: bool = True) -> None:
         self._pending_video_path = None
         self._phase = CapturePhase.IDLE
         self._led.request(True)
         self._idle_frame_drawn = False
-        self._drain_control_events(ignore_capture=True)
+        if discard_capture:
+            self._drain_control_events(ignore_capture=True)
 
     def _render(self, now: float) -> None:
         if self._phase is CapturePhase.IDLE:

@@ -1,9 +1,9 @@
 # Picture
 
 `picture` is a full-screen interactive camera display for a Raspberry Pi 3A+,
-the 7-inch DSI display, and a Camera Module 3 Wide. It keeps the latest photo
-on screen, temporarily replaces it with a live camera preview during capture,
-and records videos up to 30 seconds.
+the 7-inch DSI display, and a Camera Module 3 Wide. It continuously displays
+the newest capture—showing a photo or looping a video—temporarily replaces it
+with a live camera preview during capture, and records videos up to 30 seconds.
 
 The app uses Pygame for the display, Picamera2 with the hardware H.264 encoder
 and PyAV MP4 output for the camera, and gpiozero with the `lgpio` backend for
@@ -73,10 +73,11 @@ Video mode:
 - At the 30-second limit, recording ends before the small pattern LED flashes
   three times over one second to confirm the automatic stop.
 - Presses during the one-second pre-recording flash sequence are discarded.
-- Every completed video is saved and then played full-screen once. A manually
-  stopped video starts playback immediately; an automatically stopped video
-  starts after the ending small-LED flashes.
-- After playback, the display returns to the latest saved photo.
+- Every completed video is saved and then looped full-screen continuously. A
+  manually stopped video starts looping immediately; an automatically stopped
+  video starts after the ending small-LED flashes.
+- Pressing BTN1 during a video loop ends playback and starts a new photo or
+  video capture according to the current mode-switch position.
 
 BTN2 directly toggles the LED strip on or off. The selected strip state remains
 steady during photo countdowns, video countdowns, recording, ending flashes,
@@ -84,8 +85,8 @@ and playback. Only the small pattern LED performs the slow and fast capture
 animations. It always follows the requested pattern and is unaffected by BTN2.
 The strip starts on when the app starts.
 
-The mode switch is read when an idle BTN1 press occurs. Moving it during an
-active photo or video does not interrupt that capture.
+The mode switch is read when BTN1 requests a new capture. Moving it during an
+active photo or video capture does not interrupt that capture.
 
 ## Install
 
@@ -167,10 +168,19 @@ By default the app creates:
 - `media/photos/picture_YYYYMMDD_HHMMSS_microseconds.jpg`
 - `media/videos/video_YYYYMMDD_HHMMSS_microseconds.mp4`
 
-The `media` directory is ignored by Git. The newest saved JPEG is loaded at
-startup. Captures are never intentionally overwritten: every photo and video
-filename contains its capture timestamp down to microseconds. Set
-`PICTURE_MEDIA_DIR` to keep files on a different disk or mounted directory.
+The `media` directory is ignored by Git. On every boot, the app compares photo
+and video filename timestamps. It displays the newest photo or continuously
+loops the newest video, whichever capture is newer. Captures are never
+intentionally overwritten: every photo and video filename contains its capture
+timestamp down to microseconds. Set `PICTURE_MEDIA_DIR` to keep files on a
+different disk or mounted directory.
+
+The combined size of `media/photos` and `media/videos` is limited to 48 GB by
+default. Once usage is at or above the configured limit, BTN1 cannot start
+another photo or video. The display briefly shows **Storage full**, then
+returns to the current photo or resumes the current video loop. Existing media
+is never automatically deleted. After files are manually removed, the next
+BTN1 press recalculates usage and capture becomes available again.
 
 ## Configuration
 
@@ -197,6 +207,8 @@ app:
 - `VIDEO_MAX_SECONDS=30` (values above 30 are clamped to 30)
 - `DISPLAY_FRAME_RATE=30`
 - `PICTURE_MEDIA_DIR=/path/to/media`
+- `MEDIA_MAX_GB=48`
+- `STORAGE_FULL_MESSAGE_SECONDS=2`
 
 All GPIO settings use BCM numbering. Preview and still dimensions must be
 positive even numbers.
