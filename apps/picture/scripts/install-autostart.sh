@@ -12,6 +12,12 @@ if ((EUID == 0)); then
   exit 1
 fi
 
+if [[ "$APP_DIR" =~ [[:space:]] ]]; then
+  echo "The project path cannot contain spaces for this systemd service:" >&2
+  echo "  $APP_DIR" >&2
+  exit 1
+fi
+
 USER_NAME="$(id -un)"
 USER_ID="$(id -u)"
 UNIT_FILE="$(mktemp)"
@@ -44,8 +50,8 @@ User=$USER_NAME
 Environment="HOME=$HOME"
 Environment="XDG_RUNTIME_DIR=/run/user/$USER_ID"
 Environment="PYTHONUNBUFFERED=1"
-WorkingDirectory="$APP_DIR"
-ExecStart=/bin/bash "$APP_DIR/scripts/autostart.sh"
+WorkingDirectory=$APP_DIR
+ExecStart=/bin/bash $APP_DIR/scripts/autostart.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=15
