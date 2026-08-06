@@ -107,15 +107,58 @@ appliance use only requires the physical controls.
 
 ### Start automatically
 
-First configure Raspberry Pi OS to log in automatically to the desktop. Then
-run this once as the desktop user:
+The full-screen app needs a graphical desktop. Enable desktop autologin:
 
 ```bash
-./scripts/install-autostart.sh
+sudo raspi-config
 ```
 
-The generated desktop entry uses this checkout's absolute path. Re-run the
-installer if the project is moved.
+Choose **System Options → Boot / Auto Login → Desktop Autologin**. Then install
+the boot service. These commands can be run over SSH:
+
+```bash
+cd /path/to/pi-projects/apps/picture
+./scripts/install-autostart.sh
+sudo reboot
+```
+
+The installer creates and enables `/etc/systemd/system/picture.service`. Its
+launcher waits for either the Wayland or X11 desktop before starting Pygame,
+restarts the app after failures, and writes a persistent startup log. It also
+removes the older desktop-entry launcher so two copies cannot start.
+
+Re-run the installer after moving the project to a different path.
+
+### Troubleshoot autostart
+
+Run the diagnostic script over SSH:
+
+```bash
+cd /path/to/pi-projects/apps/picture
+./scripts/troubleshoot.sh
+```
+
+The most useful individual commands are:
+
+```bash
+sudo systemctl status picture.service --no-pager --full
+sudo journalctl -u picture.service -b --no-pager -n 100
+tail -n 120 media/logs/autostart.log
+sudo systemctl restart picture.service
+```
+
+Common results:
+
+- `No graphical display was found`: enable desktop autologin and confirm the
+  Pi boots to the desktop, not the console.
+- Missing `.venv/bin/python` or import errors: rerun `./scripts/setup.sh`.
+- `pygame.error` involving the video device: verify a desktop session exists
+  for the same user that ran `install-autostart.sh`.
+- GPIO permission errors: run `id` and confirm the user belongs to `gpio`.
+- Camera busy or unavailable: stop other camera programs and run
+  `rpicam-hello --list-cameras`.
+- Reboots, display flicker, or camera errors when the strip turns on: inspect
+  `vcgencmd get_throttled` and correct the power budget.
 
 ## Saved media
 
