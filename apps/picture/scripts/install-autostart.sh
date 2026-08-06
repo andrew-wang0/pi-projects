@@ -5,6 +5,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SERVICE_NAME="picture.service"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME"
+
+if ((EUID == 0)); then
+  echo "Run this script as the desktop user, without sudo." >&2
+  echo "The script will request sudo only when installing the service." >&2
+  exit 1
+fi
+
 USER_NAME="$(id -un)"
 USER_ID="$(id -u)"
 UNIT_FILE="$(mktemp)"
@@ -38,7 +45,7 @@ Environment="HOME=$HOME"
 Environment="XDG_RUNTIME_DIR=/run/user/$USER_ID"
 Environment="PYTHONUNBUFFERED=1"
 WorkingDirectory="$APP_DIR"
-ExecStart="$APP_DIR/scripts/autostart.sh"
+ExecStart=/bin/bash "$APP_DIR/scripts/autostart.sh"
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=15
@@ -51,7 +58,13 @@ sudo install -m 0644 "$UNIT_FILE" "$SERVICE_FILE"
 rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/picture.desktop"
 
 sudo systemctl daemon-reload
+if ! sudo systemd-analyze verify "$SERVICE_FILE"; then
+  echo "The generated service failed validation:" >&2
+  sudo systemctl cat "$SERVICE_NAME" >&2 || true
+  exit 1
+fi
 sudo systemctl enable "$SERVICE_NAME"
+sudo systemctl reset-failed "$SERVICE_NAME" 2> /dev/null || true
 sudo systemctl restart "$SERVICE_NAME"
 
 echo "Installed and started $SERVICE_FILE"
