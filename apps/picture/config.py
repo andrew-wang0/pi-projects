@@ -55,8 +55,6 @@ class CameraConfig:
 @dataclass(frozen=True)
 class StorageConfig:
     media_dir: Path
-    photos_dir: Path
-    videos_dir: Path
     max_bytes: int
     full_message_seconds: float
 
@@ -107,8 +105,6 @@ def load_config() -> AppConfig:
     )
     storage = StorageConfig(
         media_dir=media_dir,
-        photos_dir=media_dir,
-        videos_dir=media_dir,
         max_bytes=int(_float_env("MEDIA_MAX_GB", 48.0) * 1_000_000_000),
         full_message_seconds=_float_env("STORAGE_FULL_MESSAGE_SECONDS", 2.0),
     )

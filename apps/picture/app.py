@@ -62,7 +62,7 @@ class PictureApp:
         self._idle_frame_drawn = False
 
     def run(self) -> None:
-        latest_photo = self._camera.latest_photo(self._config.storage.photos_dir)
+        latest_photo = self._camera.latest_photo(self._config.storage.media_dir)
         latest_media = self._camera.latest_media(self._config.storage)
         self._current_media = latest_media
         if latest_photo is not None:

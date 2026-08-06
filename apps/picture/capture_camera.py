@@ -62,7 +62,7 @@ class CaptureCamera:
         return self._camera.capture_array("main")
 
     def capture_photo(self, frame) -> Path:
-        path = self._new_media_path(self._storage.photos_dir, "picture", ".jpg")
+        path = self._new_media_path(self._storage.media_dir, "picture", ".jpg")
         LOGGER.info("Capturing photo to %s", path)
 
         # Picamera2's RGB888 stream is BGR byte order in memory. Save the exact
@@ -82,7 +82,7 @@ class CaptureCamera:
         if self.recording:
             raise RuntimeError("Video recording is already active")
 
-        path = self._new_media_path(self._storage.videos_dir, "video", ".mp4")
+        path = self._new_media_path(self._storage.media_dir, "video", ".mp4")
         encoder = H264Encoder(
             bitrate=self._config.video_bitrate,
             repeat=True,
@@ -150,9 +150,9 @@ class CaptureCamera:
         self._camera.close()
 
     @staticmethod
-    def latest_photo(photos_dir: Path) -> Path | None:
+    def latest_photo(media_dir: Path) -> Path | None:
         try:
-            photos = tuple(photos_dir.rglob("picture_*.jpg"))
+            photos = tuple(media_dir.rglob("picture_*.jpg"))
         except OSError:
             LOGGER.exception("Could not scan the photo directory")
             return None

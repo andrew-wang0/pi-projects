@@ -175,8 +175,8 @@ Common results:
 
 By default the app creates:
 
-- `media/photos/picture_YYYYMMDD_HHMMSS_microseconds.jpg`
-- `media/videos/video_YYYYMMDD_HHMMSS_microseconds.mp4`
+- `media/picture_YYYYMMDD_HHMMSS_microseconds.jpg`
+- `media/video_YYYYMMDD_HHMMSS_microseconds.mp4`
 
 The `media` directory is ignored by Git. On every boot, the app compares photo
 and video filename timestamps. It displays the newest photo or continuously
@@ -185,12 +185,15 @@ intentionally overwritten: every photo and video filename contains its capture
 timestamp down to microseconds. Set `PICTURE_MEDIA_DIR` to keep files on a
 different disk or mounted directory.
 
-The combined size of `media/photos` and `media/videos` is limited to 48 GB by
-default. Once usage is at or above the configured limit, BTN1 cannot start
-another photo or video. The display briefly shows **Storage full**, then
+The combined size of timestamped photos and videos in `media` is limited to
+48 GB by default. Once usage is at or above the configured limit, BTN1 cannot
+start another photo or video. The display briefly shows **Storage full**, then
 returns to the current photo or resumes the current video loop. Existing media
 is never automatically deleted. After files are manually removed, the next
 BTN1 press recalculates usage and capture becomes available again.
+
+Older captures inside legacy `media/photos` or `media/videos` folders are still
+discovered, displayed, and included in the storage limit.
 
 ## Configuration
 
