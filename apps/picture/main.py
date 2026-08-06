@@ -22,8 +22,7 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     config = load_config()
-    config.storage.photos_dir.mkdir(parents=True, exist_ok=True)
-    config.storage.videos_dir.mkdir(parents=True, exist_ok=True)
+    config.storage.media_dir.mkdir(parents=True, exist_ok=True)
 
     stop_event = threading.Event()
     playback_interrupt = threading.Event()

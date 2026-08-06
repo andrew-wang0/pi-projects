@@ -152,7 +152,7 @@ class CaptureCamera:
     @staticmethod
     def latest_photo(photos_dir: Path) -> Path | None:
         try:
-            photos = tuple(photos_dir.glob("*.jpg"))
+            photos = tuple(photos_dir.rglob("picture_*.jpg"))
         except OSError:
             LOGGER.exception("Could not scan the photo directory")
             return None
@@ -167,8 +167,8 @@ class CaptureCamera:
     def latest_media(storage: StorageConfig) -> Path | None:
         try:
             media = (
-                *storage.photos_dir.glob("picture_*.jpg"),
-                *storage.videos_dir.glob("video_*.mp4"),
+                *storage.media_dir.rglob("picture_*.jpg"),
+                *storage.media_dir.rglob("video_*.mp4"),
             )
         except OSError:
             LOGGER.exception("Could not scan the media directories")
@@ -186,16 +186,21 @@ class CaptureCamera:
     @staticmethod
     def media_size_bytes(storage: StorageConfig) -> int:
         total = 0
-        for directory in (storage.photos_dir, storage.videos_dir):
-            try:
-                paths = directory.rglob("*")
-                for path in paths:
-                    if path.is_file() and not path.is_symlink():
-                        total += path.stat().st_size
-            except OSError:
-                LOGGER.exception("Could not calculate media usage in %s", directory)
-                # Fail closed so an unreadable directory cannot bypass the cap.
-                return storage.max_bytes
+        try:
+            media = (
+                *storage.media_dir.rglob("picture_*.jpg"),
+                *storage.media_dir.rglob("video_*.mp4"),
+            )
+            for path in media:
+                if path.is_file() and not path.is_symlink():
+                    total += path.stat().st_size
+        except OSError:
+            LOGGER.exception(
+                "Could not calculate media usage in %s",
+                storage.media_dir,
+            )
+            # Fail closed so an unreadable directory cannot bypass the cap.
+            return storage.max_bytes
         return total
 
     @staticmethod
