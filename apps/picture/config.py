@@ -75,7 +75,7 @@ def load_config() -> AppConfig:
         mode_switch=_int_env("MODE_SWITCH_PIN", 26),
         capture_button=_int_env("CAPTURE_BUTTON_PIN", 16),
         led_output=_int_env("LED_OUTPUT_PIN", 21),
-        pattern_led_output=_int_env("PATTERN_LED_PIN", 20),
+        pattern_led_output=_int_env("PATTERN_LED_PIN", 12),
         led_toggle_button=_int_env("LED_TOGGLE_BUTTON_PIN", 17),
         led_active_high=_bool_env("LED_ACTIVE_HIGH", True),
         pattern_led_active_high=_bool_env("PATTERN_LED_ACTIVE_HIGH", True),

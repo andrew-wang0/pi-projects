@@ -27,8 +27,8 @@ addressable strip that requires a data signal.
 
 Raspberry Pi GPIO is 3.3 V only and is not 5 V tolerant:
 
-- Never connect USB 5 V or the converter's 12 V output to GPIO16, GPIO17,
-  GPIO20, GPIO21, or GPIO26.
+- Never connect USB 5 V or the converter's 12 V output to GPIO12, GPIO16,
+  GPIO17, GPIO21, or GPIO26.
 - Never connect the LED strip directly to GPIO21.
 - GPIO21 drives only the MOSFET gate.
 - The buttons and switch connect GPIO inputs to ground, not to 5 V.
@@ -88,19 +88,22 @@ positions on the Pi's 40-pin header.
 | ----------------------------- | -------: | -----------: | ---------------------------------- |
 | Video/photo mode switch       |   GPIO26 |           37 | Switch center/common leg           |
 | Capture button, BTN1          |   GPIO16 |           36 | One side of capture button         |
-| Small pattern LED             |   GPIO20 |           38 | 330 ohm resistor, then LED anode   |
+| Small pattern LED             |   GPIO12 |           32 | 330 ohm resistor, then LED anode   |
 | LED MOSFET control            |   GPIO21 |           40 | 330 ohm resistor, then MOSFET gate |
+| Small pattern LED ground      |      GND |           30 | LED cathode                        |
 | BTN1 ground                   |      GND |           34 | Other side of capture button       |
-| Lower control ground          |      GND |           39 | Mode switch and small LED cathode  |
+| Mode-switch ground            |      GND |           39 | Grounded outside switch leg        |
 | LED-strip on/off button, BTN2 |   GPIO17 |           11 | One side of strip toggle button    |
 | Upper control ground          |      GND |            9 | Other side of BTN2                 |
 
 The relevant bottom end of the header is:
 
 ```text
+Physical pin 29: unused     Physical pin 30: GND
+Physical pin 31: unused     Physical pin 32: GPIO12
 Physical pin 33: unused     Physical pin 34: GND
 Physical pin 35: unused     Physical pin 36: GPIO16
-Physical pin 37: GPIO26     Physical pin 38: GPIO20
+Physical pin 37: GPIO26     Physical pin 38: unused
 Physical pin 39: GND        Physical pin 40: GPIO21
 ```
 
@@ -161,19 +164,19 @@ capture patterns.
 Connect:
 
 ```text
-Pi physical pin 38 (GPIO20) ---- 330 ohm ---- LED anode (+)
-Pi physical pin 39 (GND) -------------------- LED cathode (-)
+Pi physical pin 32 (GPIO12) ---- 330 ohm ---- LED anode (+)
+Pi physical pin 30 (GND) -------------------- LED cathode (-)
 ```
 
 The resistor may be placed on either side of the LED, but it must be in series;
-never connect the LED directly between GPIO20 and ground.
+never connect the LED directly between GPIO12 and ground.
 
 The longer LED leg is commonly the anode. The shorter leg and flat edge on the
 LED body commonly mark the cathode, but verify the specific LED. If it does not
 light, disconnect power and recheck polarity rather than bypassing the
 resistor.
 
-GPIO20 follows the app's requested LED pattern directly. It is on during the
+GPIO12 follows the app's requested LED pattern directly. It is on during the
 normal steady-on and recording states and follows all slow and fast capture
 flashes. BTN2 independently toggles the MOSFET and 12 V strip, so the small LED
 continues to show every pattern regardless of the strip's on/off state.
@@ -459,8 +462,8 @@ Before final power-up, verify all of the following:
 
 - GPIO16 connects to BTN1 and only reaches ground when BTN1 is pressed.
 - GPIO17 connects to BTN2 and only reaches ground when BTN2 is pressed.
-- GPIO20 reaches the small LED only through its 330 ohm resistor.
-- The small LED anode faces GPIO20 and its cathode reaches ground.
+- GPIO12 reaches the small LED only through its 330 ohm resistor.
+- The small LED anode faces GPIO12 and its cathode reaches ground.
 - GPIO26 connects to switch common.
 - Exactly one mode-switch outside leg connects to ground.
 - GPIO21 reaches the MOSFET gate only through 330 ohms.

@@ -24,8 +24,8 @@ All pin names below are BCM GPIO numbers, not physical header numbers.
   - Grounded selects video; the open/pulled-up position selects photo.
 - Capture button (BTN1): GPIO16, physical pin 36, to ground on physical pin 34.
 - LED MOSFET gate: GPIO21, physical pin 40.
-- Small pattern LED: GPIO20, physical pin 38, through a 330 ohm resistor to
-  the LED anode; LED cathode to ground on physical pin 39.
+- Small pattern LED: GPIO12, physical pin 32, through a 330 ohm resistor to
+  the LED anode; LED cathode to ground on physical pin 30.
 - LED-strip on/off button (BTN2): GPIO17, physical pin 11, to ground
   (physical pin 9 is convenient).
 
@@ -180,7 +180,7 @@ app:
 - `MODE_SWITCH_PIN=26`
 - `CAPTURE_BUTTON_PIN=16`
 - `LED_OUTPUT_PIN=21`
-- `PATTERN_LED_PIN=20`
+- `PATTERN_LED_PIN=12`
 - `LED_TOGGLE_BUTTON_PIN=17`
 - `VIDEO_MODE_WHEN_GROUNDED=true`
 - `LED_ACTIVE_HIGH=true`
