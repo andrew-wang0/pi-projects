@@ -176,10 +176,12 @@ LED body commonly mark the cathode, but verify the specific LED. If it does not
 light, disconnect power and recheck polarity rather than bypassing the
 resistor.
 
-GPIO12 follows the app's requested LED pattern directly. It is on during the
-normal steady-on and recording states and follows all slow and fast capture
-flashes. BTN2 independently toggles the MOSFET and 12 V strip, so the small LED
-continues to show every pattern regardless of the strip's on/off state.
+GPIO12 follows the app's requested LED pattern directly. It follows all slow
+and fast capture flashes, stays on while video is recording, then turns off
+after a photo or video is saved. It remains off while a photo is displayed or
+a video loops. BTN2 independently toggles the MOSFET and 12 V strip, so the
+small LED continues to show every capture pattern regardless of the strip's
+on/off state.
 
 ### Three-leg mode switch
 

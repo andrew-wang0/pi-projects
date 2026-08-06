@@ -44,7 +44,7 @@ class PinConfig:
 @dataclass(frozen=True)
 class CameraConfig:
     preview_size: tuple[int, int]
-    still_size: tuple[int, int]
+    sensor_size: tuple[int, int]
     frame_rate: int
     video_bitrate: int
     video_max_seconds: float
@@ -89,9 +89,15 @@ def load_config() -> AppConfig:
             _int_env("CAMERA_PREVIEW_WIDTH", 1280),
             _int_env("CAMERA_PREVIEW_HEIGHT", 720),
         ),
-        still_size=(
-            _int_env("CAMERA_STILL_WIDTH", 2304),
-            _int_env("CAMERA_STILL_HEIGHT", 1296),
+        sensor_size=(
+            _int_env(
+                "CAMERA_SENSOR_WIDTH",
+                _int_env("CAMERA_STILL_WIDTH", 2304),
+            ),
+            _int_env(
+                "CAMERA_SENSOR_HEIGHT",
+                _int_env("CAMERA_STILL_HEIGHT", 1296),
+            ),
         ),
         frame_rate=_int_env("CAMERA_FRAME_RATE", 24),
         video_bitrate=_int_env("VIDEO_BITRATE", 8_000_000),
@@ -133,7 +139,7 @@ def _validate(config: AppConfig) -> None:
 
     for name, size in (
         ("preview", config.camera.preview_size),
-        ("still", config.camera.still_size),
+        ("sensor", config.camera.sensor_size),
     ):
         if any(dimension <= 0 or dimension % 2 for dimension in size):
             raise ValueError(f"The camera {name} dimensions must be positive even numbers")

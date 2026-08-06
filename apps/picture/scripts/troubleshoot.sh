@@ -35,7 +35,7 @@ ls -l "/run/user/$(id -u)"/wayland-* /tmp/.X11-unix/X0 2>&1 || true
 section "Python dependencies"
 if [[ -x "$APP_DIR/.venv/bin/python" ]]; then
   "$APP_DIR/.venv/bin/python" -c \
-    "import av, gpiozero, lgpio, pygame, picamera2; print('All imports succeeded.')"
+    "import av, gpiozero, lgpio, pygame, picamera2, PIL; print('All imports succeeded.')"
 else
   echo "Missing $APP_DIR/.venv/bin/python; run scripts/setup.sh."
 fi

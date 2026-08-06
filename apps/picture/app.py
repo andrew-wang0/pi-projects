@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import Enum, auto
 import logging
+import math
 from pathlib import Path
 from queue import Empty, SimpleQueue
 import threading
@@ -57,6 +58,7 @@ class PictureApp:
         self._video_started_at: float | None = None
         self._pending_video_path: Path | None = None
         self._current_media: Path | None = None
+        self._last_preview_frame = None
         self._idle_frame_drawn = False
 
     def run(self) -> None:
@@ -69,7 +71,7 @@ class PictureApp:
             except Exception:
                 LOGGER.exception("Could not load the latest photo: %s", latest_photo)
 
-        self._led.request(True)
+        self._led.request(False)
         self._drain_control_events()
         if (
             self._phase is CapturePhase.IDLE
@@ -120,6 +122,7 @@ class PictureApp:
             self._phase = CapturePhase.VIDEO_COUNTDOWN
             self._start_cues(CuePlayer(video_start_cues()), now)
         else:
+            self._last_preview_frame = None
             self._phase = CapturePhase.PHOTO_COUNTDOWN
             self._start_cues(CuePlayer(photo_capture_cues()), now)
 
@@ -155,12 +158,14 @@ class PictureApp:
             return
 
         self._cue_player = None
-        self._led.request(True)
         if self._phase is CapturePhase.PHOTO_COUNTDOWN:
+            self._led.request(True)
             self._capture_photo()
         elif self._phase is CapturePhase.VIDEO_COUNTDOWN:
+            self._led.request(True)
             self._start_video()
         elif self._phase is CapturePhase.VIDEO_END_CUES:
+            self._led.request(False)
             video_path = self._pending_video_path
             self._pending_video_path = None
             if video_path is None:
@@ -171,15 +176,20 @@ class PictureApp:
     def _capture_photo(self) -> None:
         self._phase = CapturePhase.PHOTO_CAPTURE
         try:
-            photo_path = self._camera.capture_photo()
-            self._display.load_still(photo_path)
+            frame = self._last_preview_frame
+            if frame is None:
+                frame = self._camera.capture_preview_frame().copy()
+                self._display.show_preview(frame)
+
+            photo_path = self._camera.capture_photo(frame)
+            self._display.set_still_frame(frame)
             self._current_media = photo_path
             LOGGER.info("Photo captured: %s", photo_path)
         except Exception:
             LOGGER.exception("Photo capture failed")
         finally:
             self._phase = CapturePhase.IDLE
-            self._led.request(True)
+            self._led.request(False)
             self._idle_frame_drawn = False
             self._drain_control_events(ignore_capture=True)
 
@@ -189,7 +199,7 @@ class PictureApp:
         except Exception:
             LOGGER.exception("Video recording could not start")
             self._phase = CapturePhase.IDLE
-            self._led.request(True)
+            self._led.request(False)
             self._idle_frame_drawn = False
             self._drain_control_events(ignore_capture=True)
             return
@@ -227,7 +237,7 @@ class PictureApp:
 
         while not self._stop_event.is_set():
             self._phase = CapturePhase.VIDEO_PLAYBACK
-            self._led.request(True)
+            self._led.request(False)
             self._playback_interrupt.clear()
             camera_paused = False
             playback_failed = False
@@ -293,7 +303,7 @@ class PictureApp:
     def _return_to_idle(self, *, discard_capture: bool = True) -> None:
         self._pending_video_path = None
         self._phase = CapturePhase.IDLE
-        self._led.request(True)
+        self._led.request(False)
         self._idle_frame_drawn = False
         if discard_capture:
             self._drain_control_events(ignore_capture=True)
@@ -308,9 +318,21 @@ class PictureApp:
             return
 
         frame = self._camera.capture_preview_frame()
-        recording_dot_visible = (
+        self._last_preview_frame = frame.copy()
+        recording_dot_visible = False
+        recording_seconds_remaining: int | None = None
+        if (
             self._phase is CapturePhase.VIDEO_RECORDING
             and self._video_started_at is not None
-            and int((now - self._video_started_at) * 2) % 2 == 0
+        ):
+            elapsed = max(0.0, now - self._video_started_at)
+            recording_dot_visible = elapsed % 1.0 < 0.5
+            recording_seconds_remaining = max(
+                0,
+                math.ceil(self._config.camera.video_max_seconds - elapsed),
+            )
+        self._display.show_preview(
+            frame,
+            recording_dot_visible,
+            recording_seconds_remaining,
         )
-        self._display.show_preview(frame, recording_dot_visible)

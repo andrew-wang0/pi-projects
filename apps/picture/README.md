@@ -59,6 +59,10 @@ Photo mode:
 - The small pattern LED runs three slow flashes (0.5 seconds off, 0.5 seconds
   on), followed by three fast flashes during the fourth second.
 - The final fast flash stays on while the photo is captured.
+- The exact final frame already shown in the live preview is frozen, saved as
+  the JPEG, and left on screen. The camera does not switch modes between
+  preview and capture, eliminating the pause and framing/time mismatch.
+- The small pattern LED turns off immediately after the photo is saved.
 - Additional BTN1 presses during the sequence or capture are discarded.
 - The new photo replaces the previous photo on screen.
 
@@ -67,7 +71,9 @@ Video mode:
 - BTN1 immediately displays the live preview and flashes the small pattern LED
   three times over one second.
 - Recording then starts with the small pattern LED on.
-- A blinking red dot appears in the preview's top-right corner.
+- A red dot in the preview's top-right corner flashes for half a second on and
+  half a second off. Its centered white number shows the maximum recording
+  seconds remaining.
 - BTN1 stops an active recording. Recording also stops automatically at
   30 seconds.
 - At the 30-second limit, recording ends before the small pattern LED flashes
@@ -76,6 +82,10 @@ Video mode:
 - Every completed video is saved and then looped full-screen continuously. A
   manually stopped video starts looping immediately; an automatically stopped
   video starts after the ending small-LED flashes.
+- Looping keeps the MP4 container and decoder open and seeks back to the first
+  keyframe, avoiding repeated file and codec initialization.
+- The small pattern LED turns off after recording and remains off during video
+  playback.
 - Pressing BTN1 during a video loop ends playback and starts a new photo or
   video capture according to the current mode-switch position.
 
@@ -100,8 +110,8 @@ cd /path/to/pi-projects/apps/picture
 ./scripts/run.sh
 ```
 
-The setup script installs Picamera2, PyAV, Pygame, gpiozero, `lgpio`, and a
-virtual environment that can see those system packages.
+The setup script installs Picamera2, PyAV, Pillow, Pygame, gpiozero, `lgpio`,
+and a virtual environment that can see those system packages.
 
 Press Escape or `q` on an attached keyboard to exit during setup. Normal
 appliance use only requires the physical controls.
@@ -198,8 +208,8 @@ app:
 - `BUTTON_BOUNCE_SECONDS=0.08`
 - `CAMERA_PREVIEW_WIDTH=1280`
 - `CAMERA_PREVIEW_HEIGHT=720`
-- `CAMERA_STILL_WIDTH=2304`
-- `CAMERA_STILL_HEIGHT=1296`
+- `CAMERA_SENSOR_WIDTH=2304`
+- `CAMERA_SENSOR_HEIGHT=1296`
 - `CAMERA_FRAME_RATE=24`
 - `CAMERA_HFLIP=false`
 - `CAMERA_VFLIP=false`
@@ -210,8 +220,9 @@ app:
 - `MEDIA_MAX_GB=48`
 - `STORAGE_FULL_MESSAGE_SECONDS=2`
 
-All GPIO settings use BCM numbering. Preview and still dimensions must be
-positive even numbers.
+All GPIO settings use BCM numbering. Preview and sensor dimensions must be
+positive even numbers. Photos use the preview dimensions because they are
+saved from the exact frame shown on screen.
 
 ## Hardware checks
 

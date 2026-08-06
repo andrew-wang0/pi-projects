@@ -10,12 +10,13 @@ sudo apt-get install -y \
   python3-gpiozero \
   python3-lgpio \
   python3-picamera2 \
+  python3-pil \
   python3-pygame \
   python3-venv
 
 python3 -m venv --system-site-packages "$APP_DIR/.venv"
 
 "$APP_DIR/.venv/bin/python" -c \
-  "import av, gpiozero, lgpio, pygame, picamera2; print('Picture dependencies are ready.')"
+  "import av, gpiozero, lgpio, pygame, picamera2, PIL; print('Picture dependencies are ready.')"
 
 echo "Setup complete. Start the app with: $APP_DIR/scripts/run.sh"

@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from libcamera import Transform, controls
+from PIL import Image
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 from picamera2.outputs import PyavOutput
@@ -38,22 +39,11 @@ class CaptureCamera:
                 "size": config.preview_size,
                 "format": "RGB888",
             },
-            raw={"size": config.still_size},
+            raw={"size": config.sensor_size},
             transform=transform,
             controls=camera_controls,
             buffer_count=3,
             display="main",
-        )
-        self._still_configuration = self._camera.create_still_configuration(
-            main={
-                "size": config.still_size,
-                "format": "RGB888",
-            },
-            raw={"size": config.still_size},
-            transform=transform,
-            controls={"AfMode": controls.AfModeEnum.Continuous},
-            buffer_count=2,
-            display=None,
         )
 
         self._camera.configure(self._video_configuration)
@@ -71,14 +61,18 @@ class CaptureCamera:
     def capture_preview_frame(self):
         return self._camera.capture_array("main")
 
-    def capture_photo(self) -> Path:
+    def capture_photo(self, frame) -> Path:
         path = self._new_media_path(self._storage.photos_dir, "picture", ".jpg")
         LOGGER.info("Capturing photo to %s", path)
-        self._camera.switch_mode_and_capture_file(
-            self._still_configuration,
-            str(path),
-            name="main",
-            format="jpeg",
+
+        # Picamera2's RGB888 stream is BGR byte order in memory. Save the exact
+        # preview frame after converting it to PIL's RGB order.
+        rgb_frame = frame[:, :, ::-1].copy()
+        Image.fromarray(rgb_frame).save(
+            path,
+            format="JPEG",
+            quality=95,
+            subsampling=0,
         )
         if not path.is_file() or path.stat().st_size == 0:
             raise RuntimeError("The photo capture did not produce a non-empty file")

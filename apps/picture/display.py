@@ -20,6 +20,11 @@ class PictureDisplay:
         self._size = self._screen.get_size()
         self._clock = pygame.time.Clock()
         self._still_surface: pygame.Surface | None = None
+        self._recording_dot_radius = max(16, min(self._size) // 24)
+        self._recording_font = pygame.font.Font(
+            None,
+            max(22, round(self._recording_dot_radius * 1.5)),
+        )
 
     def poll_exit_requested(self) -> bool:
         for event in pygame.event.get():
@@ -36,6 +41,13 @@ class PictureDisplay:
         loaded = pygame.image.load(str(path)).convert()
         self._still_surface = self._scale_to_cover(loaded, smooth=True)
 
+    def set_still_frame(self, frame) -> None:
+        height, width = frame.shape[:2]
+        surface = pygame.image.frombuffer(frame.data, (width, height), "BGR")
+        # Use the same scaling path as live preview so the frozen image is
+        # visually identical to the final displayed camera frame.
+        self._still_surface = self._scale_to_cover(surface, smooth=False)
+
     def show_still(self) -> None:
         if self._still_surface is None:
             self._show_empty_state()
@@ -43,20 +55,35 @@ class PictureDisplay:
             self._screen.blit(self._still_surface, (0, 0))
         pygame.display.flip()
 
-    def show_preview(self, frame, recording_dot_visible: bool = False) -> None:
+    def show_preview(
+        self,
+        frame,
+        recording_dot_visible: bool = False,
+        recording_seconds_remaining: int | None = None,
+    ) -> None:
         height, width = frame.shape[:2]
         surface = pygame.image.frombuffer(frame.data, (width, height), "BGR")
         scaled = self._scale_to_cover(surface, smooth=False)
         self._screen.blit(scaled, (0, 0))
 
         if recording_dot_visible:
-            radius = max(8, min(self._size) // 32)
+            radius = self._recording_dot_radius
             center = (
                 self._size[0] - radius * 2,
                 radius * 2,
             )
             pygame.draw.circle(self._screen, (110, 0, 0), center, radius + 3)
             pygame.draw.circle(self._screen, (255, 25, 25), center, radius)
+            if recording_seconds_remaining is not None:
+                remaining_text = self._recording_font.render(
+                    str(recording_seconds_remaining),
+                    True,
+                    (255, 255, 255),
+                )
+                self._screen.blit(
+                    remaining_text,
+                    remaining_text.get_rect(center=center),
+                )
 
         pygame.display.flip()
 
@@ -67,16 +94,17 @@ class PictureDisplay:
         interrupt_event: threading.Event,
     ) -> bool:
         """Loop a saved video; return True when the user requests app exit."""
-        while not stop_event.is_set() and not interrupt_event.is_set():
-            frames_played = 0
-            with av.open(str(path)) as container:
-                stream = container.streams.video[0]
-                stream.thread_type = "AUTO"
-                frame_rate = (
-                    float(stream.average_rate)
-                    if stream.average_rate is not None
-                    else 24.0
-                )
+        with av.open(str(path)) as container:
+            stream = container.streams.video[0]
+            stream.thread_type = "AUTO"
+            frame_rate = (
+                float(stream.average_rate)
+                if stream.average_rate is not None
+                else 24.0
+            )
+
+            while not stop_event.is_set() and not interrupt_event.is_set():
+                frames_played = 0
                 playback_started = time.monotonic()
                 first_frame_time: float | None = None
 
@@ -109,8 +137,14 @@ class PictureDisplay:
                     self.show_preview(video_frame)
                     frames_played += 1
 
-            if frames_played == 0:
-                raise RuntimeError(f"Video contains no decodable frames: {path}")
+                if frames_played == 0:
+                    raise RuntimeError(f"Video contains no decodable frames: {path}")
+
+                # Keep the MP4 and decoder open. Seeking avoids repeating file
+                # and codec setup on every loop; compressed frames still have
+                # to be decoded again to keep RAM use suitable for the Pi 3A+.
+                container.seek(0, backward=True, any_frame=False, stream=stream)
+                stream.codec_context.flush_buffers()
 
         return False
 
