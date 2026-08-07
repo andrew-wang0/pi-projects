@@ -71,9 +71,8 @@ Video mode:
 - BTN1 immediately displays the live preview and flashes the small pattern LED
   three times over one second.
 - Recording then starts with the small pattern LED on.
-- A red dot in the preview's top-right corner flashes for half a second on and
-  half a second off. Its centered white number shows the maximum recording
-  seconds remaining.
+- A solid red dot in the preview's top-right corner flashes for half a second
+  on and half a second off.
 - BTN1 stops an active recording. Recording also stops automatically at
   30 seconds.
 - At the 30-second limit, recording ends before the small pattern LED flashes
@@ -214,7 +213,7 @@ app:
 - `CAMERA_SENSOR_WIDTH=2304`
 - `CAMERA_SENSOR_HEIGHT=1296`
 - `CAMERA_FRAME_RATE=24`
-- `CAMERA_HFLIP=false`
+- `CAMERA_HFLIP=true`
 - `CAMERA_VFLIP=false`
 - `VIDEO_BITRATE=8000000`
 - `VIDEO_MAX_SECONDS=30` (values above 30 are clamped to 30)

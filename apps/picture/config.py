@@ -100,7 +100,7 @@ def load_config() -> AppConfig:
         frame_rate=_int_env("CAMERA_FRAME_RATE", 24),
         video_bitrate=_int_env("VIDEO_BITRATE", 8_000_000),
         video_max_seconds=min(_float_env("VIDEO_MAX_SECONDS", 30.0), 30.0),
-        horizontal_flip=_bool_env("CAMERA_HFLIP", False),
+        horizontal_flip=_bool_env("CAMERA_HFLIP", True),
         vertical_flip=_bool_env("CAMERA_VFLIP", False),
     )
     storage = StorageConfig(

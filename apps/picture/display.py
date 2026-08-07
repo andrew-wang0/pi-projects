@@ -20,11 +20,7 @@ class PictureDisplay:
         self._size = self._screen.get_size()
         self._clock = pygame.time.Clock()
         self._still_surface: pygame.Surface | None = None
-        self._recording_dot_radius = max(16, min(self._size) // 24)
-        self._recording_font = pygame.font.Font(
-            None,
-            max(22, round(self._recording_dot_radius * 1.5)),
-        )
+        self._recording_dot_radius = max(11, min(self._size) // 36)
 
     def poll_exit_requested(self) -> bool:
         for event in pygame.event.get():
@@ -59,7 +55,6 @@ class PictureDisplay:
         self,
         frame,
         recording_dot_visible: bool = False,
-        recording_seconds_remaining: int | None = None,
     ) -> None:
         height, width = frame.shape[:2]
         surface = pygame.image.frombuffer(frame.data, (width, height), "BGR")
@@ -72,18 +67,7 @@ class PictureDisplay:
                 self._size[0] - radius * 2,
                 radius * 2,
             )
-            pygame.draw.circle(self._screen, (110, 0, 0), center, radius + 3)
-            pygame.draw.circle(self._screen, (255, 25, 25), center, radius)
-            if recording_seconds_remaining is not None:
-                remaining_text = self._recording_font.render(
-                    str(recording_seconds_remaining),
-                    True,
-                    (255, 255, 255),
-                )
-                self._screen.blit(
-                    remaining_text,
-                    remaining_text.get_rect(center=center),
-                )
+            pygame.draw.circle(self._screen, (255, 0, 0), center, radius)
 
         pygame.display.flip()
 

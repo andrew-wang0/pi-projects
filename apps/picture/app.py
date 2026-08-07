@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from enum import Enum, auto
 import logging
-import math
 from pathlib import Path
 from queue import Empty, SimpleQueue
 import threading
@@ -320,19 +319,10 @@ class PictureApp:
         frame = self._camera.capture_preview_frame()
         self._last_preview_frame = frame.copy()
         recording_dot_visible = False
-        recording_seconds_remaining: int | None = None
         if (
             self._phase is CapturePhase.VIDEO_RECORDING
             and self._video_started_at is not None
         ):
             elapsed = max(0.0, now - self._video_started_at)
             recording_dot_visible = elapsed % 1.0 < 0.5
-            recording_seconds_remaining = max(
-                0,
-                math.ceil(self._config.camera.video_max_seconds - elapsed),
-            )
-        self._display.show_preview(
-            frame,
-            recording_dot_visible,
-            recording_seconds_remaining,
-        )
+        self._display.show_preview(frame, recording_dot_visible)
