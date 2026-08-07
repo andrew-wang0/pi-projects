@@ -11,20 +11,20 @@ class LedCue:
 
 def photo_capture_cues() -> tuple[LedCue, ...]:
     """Three slow flashes followed by three fast flashes in four seconds."""
-    slow_flash = (LedCue(0.5, False), LedCue(0.5, True))
-    fast_flash = (LedCue(1 / 6, False), LedCue(1 / 6, True))
+    slow_flash = (LedCue(0.5, True), LedCue(0.5, False))
+    fast_flash = (LedCue(1 / 6, True), LedCue(1 / 6, False))
     return slow_flash * 3 + fast_flash * 3
 
 
 def video_start_cues() -> tuple[LedCue, ...]:
     """Three flashes over one second before recording begins."""
-    flash = (LedCue(1 / 6, False), LedCue(1 / 6, True))
+    flash = (LedCue(1 / 6, True), LedCue(1 / 6, False))
     return flash * 3
 
 
 def video_end_cues() -> tuple[LedCue, ...]:
     """Three flashes over one second after an automatic recording stop."""
-    flash = (LedCue(1 / 6, False), LedCue(1 / 6, True))
+    flash = (LedCue(1 / 6, True), LedCue(1 / 6, False))
     return flash * 3
 
 

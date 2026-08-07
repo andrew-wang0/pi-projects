@@ -4,7 +4,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 import threading
 
-from gpiozero import Button, Device, DigitalInputDevice, DigitalOutputDevice
+from gpiozero import Button, Device, DigitalOutputDevice
 from gpiozero.pins.lgpio import LGPIOFactory
 
 from config import PinConfig
@@ -12,6 +12,8 @@ from config import PinConfig
 
 class ControlEvent(Enum):
     CAPTURE_PRESSED = auto()
+    CAPTURE_HELD = auto()
+    CAPTURE_RELEASED = auto()
     LED_TOGGLE_PRESSED = auto()
 
 
@@ -67,37 +69,30 @@ class PhysicalControls:
         pins: PinConfig,
         on_event: Callable[[ControlEvent], None],
     ) -> None:
-        self._video_mode_when_grounded = pins.video_mode_when_grounded
         self._capture_button = Button(
             pins.capture_button,
             pull_up=True,
             bounce_time=pins.button_bounce_seconds,
+            hold_time=pins.capture_hold_seconds,
+            hold_repeat=False,
         )
         self._led_toggle_button = Button(
             pins.led_toggle_button,
             pull_up=True,
             bounce_time=pins.button_bounce_seconds,
         )
-        self._mode_switch = DigitalInputDevice(
-            pins.mode_switch,
-            pull_up=True,
-            bounce_time=pins.button_bounce_seconds,
-        )
-
         self._capture_button.when_pressed = lambda: on_event(ControlEvent.CAPTURE_PRESSED)
+        self._capture_button.when_held = lambda: on_event(ControlEvent.CAPTURE_HELD)
+        self._capture_button.when_released = lambda: on_event(
+            ControlEvent.CAPTURE_RELEASED
+        )
         self._led_toggle_button.when_pressed = lambda: on_event(
             ControlEvent.LED_TOGGLE_PRESSED
         )
 
-    @property
-    def video_mode_selected(self) -> bool:
-        grounded = self._mode_switch.is_active
-        return grounded if self._video_mode_when_grounded else not grounded
-
     def close(self) -> None:
         self._capture_button.close()
         self._led_toggle_button.close()
-        self._mode_switch.close()
 
 
 def use_lgpio() -> None:

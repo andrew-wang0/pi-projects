@@ -9,7 +9,6 @@ Pi 3 Model A+ with:
 - 5 V-to-12 V DC boost converter
 - IRLB8721 N-channel MOSFET
 - Two four-leg momentary tactile buttons
-- One three-leg SPDT slide switch
 
 The GPIO assignments match the defaults in `config.py`.
 
@@ -28,10 +27,10 @@ addressable strip that requires a data signal.
 Raspberry Pi GPIO is 3.3 V only and is not 5 V tolerant:
 
 - Never connect USB 5 V or the converter's 12 V output to GPIO12, GPIO16,
-  GPIO17, GPIO21, or GPIO26.
+  GPIO17, or GPIO21.
 - Never connect the LED strip directly to GPIO21.
 - GPIO21 drives only the MOSFET gate.
-- The buttons and switch connect GPIO inputs to ground, not to 5 V.
+- The buttons connect GPIO inputs to ground, not to 5 V.
 
 ### Important IRLB8721 limitation
 
@@ -66,7 +65,6 @@ Never connect 5 V directly to the gate while it is still connected to GPIO21.
   LED
 - One 10 kilohm, 1/4 W resistor for the gate pulldown
 - Two normally-open, four-leg tactile buttons
-- One SPDT, three-leg slide switch
 - Properly rated power wire for the LED current
 - Smaller insulated hookup wire for GPIO signals
 - Soldered perfboard, terminal blocks, or another secure final connection
@@ -86,13 +84,11 @@ positions on the Pi's 40-pin header.
 
 | Function                      | BCM GPIO | Physical pin | Connects to                        |
 | ----------------------------- | -------: | -----------: | ---------------------------------- |
-| Video/photo mode switch       |   GPIO26 |           37 | Switch center/common leg           |
 | Capture button, BTN1          |   GPIO16 |           36 | One side of capture button         |
 | Small pattern LED             |   GPIO12 |           32 | 330 ohm resistor, then LED anode   |
 | LED MOSFET control            |   GPIO21 |           40 | 330 ohm resistor, then MOSFET gate |
 | Small pattern LED ground      |      GND |           30 | LED cathode                        |
 | BTN1 ground                   |      GND |           34 | Other side of capture button       |
-| Mode-switch ground            |      GND |           39 | Grounded outside switch leg        |
 | LED-strip on/off button, BTN2 |   GPIO17 |           11 | One side of strip toggle button    |
 | Upper control ground          |      GND |            9 | Other side of BTN2                 |
 
@@ -103,7 +99,7 @@ Physical pin 29: unused     Physical pin 30: GND
 Physical pin 31: unused     Physical pin 32: GPIO12
 Physical pin 33: unused     Physical pin 34: GND
 Physical pin 35: unused     Physical pin 36: GPIO16
-Physical pin 37: GPIO26     Physical pin 38: unused
+Physical pin 37: unused     Physical pin 38: unused
 Physical pin 39: GND        Physical pin 40: GPIO21
 ```
 
@@ -112,9 +108,8 @@ before connecting anything. Do not count pins from memory.
 
 ## Control wiring
 
-The app enables internal pull-up resistors for the buttons and switch. An open
-input reads high; pressing a button or selecting the grounded switch position
-pulls the input low.
+The app enables internal pull-up resistors for both buttons. An open input
+reads high; pressing a button pulls the input low.
 
 No external button pull-up resistors and no 3.3 V button connections are
 required.
@@ -141,7 +136,14 @@ Pi physical pin 36 (GPIO16) ---- BTN1 ---- Pi physical pin 34 (GND)
 ```
 
 BTN1 must be normally open. Pressing it grounds GPIO16. The software acts on
-the press edge, so holding it does not repeatedly trigger captures.
+both the press and release edges:
+
+- Press and release in under one second to start a photo process on release.
+- Hold for one second to start the video process while the button is still
+  held.
+- Releasing that initial long hold does not stop the video. Press and release
+  BTN1 again to stop recording on the second release.
+- Recording also stops automatically after 20 seconds.
 
 ### BTN2: LED-strip on/off toggle
 
@@ -182,29 +184,6 @@ after a photo or video is saved. It remains off while a photo is displayed or
 a video loops. BTN2 independently toggles the MOSFET and 12 V strip, so the
 small LED continues to show every capture pattern regardless of the strip's
 on/off state.
-
-### Three-leg mode switch
-
-First use continuity mode to identify the common leg. It is usually the center
-leg, but verify the actual switch.
-
-Connect:
-
-```text
-Pi physical pin 37 (GPIO26) ---- switch common
-Pi physical pin 39 (GND) ------- one outside switch leg
-Other outside switch leg ------- not connected and insulated
-```
-
-With the default configuration:
-
-- common connected to the grounded outer leg selects video mode;
-- common connected to the unconnected outer leg selects photo mode through
-  the Pi's internal pull-up.
-
-If the physical lever points the opposite way from the label you want, move
-the ground wire to the other outside leg. Do not connect either outer leg to
-5 V. Connecting the unused outer leg to 3.3 V is unnecessary.
 
 ## IRLB8721 and LED-strip wiring
 
@@ -397,8 +376,8 @@ connectors.
 
 1. Shut down the Pi and disconnect all power.
 2. Verify the GPIO physical pin numbers.
-3. Use continuity mode to identify the button pairs and switch common leg.
-4. Wire BTN1, BTN2, the mode switch, and the small pattern LED.
+3. Use continuity mode to identify the button pairs.
+4. Wire BTN1, BTN2, and the small pattern LED.
 5. Confirm none of those GPIO wires connects to 5 V or 12 V.
 6. On an unpowered separate board, install the IRLB8721, 330 ohm gate resistor,
    and 10 kilohm gate-to-source resistor.
@@ -447,7 +426,7 @@ any connector warms, disconnect power. Do not solve a poorly driven MOSFET
 only by adding a heatsink. Use a MOSFET specified for 2.5-3.3 V gate drive or
 a proper 5 V gate driver, and correct undersized wiring or connectors.
 
-Check the Pi after exercising both capture modes:
+Check the Pi after exercising both capture types:
 
 ```bash
 vcgencmd get_throttled
@@ -466,8 +445,6 @@ Before final power-up, verify all of the following:
 - GPIO17 connects to BTN2 and only reaches ground when BTN2 is pressed.
 - GPIO12 reaches the small LED only through its 330 ohm resistor.
 - The small LED anode faces GPIO12 and its cathode reaches ground.
-- GPIO26 connects to switch common.
-- Exactly one mode-switch outside leg connects to ground.
 - GPIO21 reaches the MOSFET gate only through 330 ohms.
 - The 10 kilohm resistor connects gate to source.
 - MOSFET source connects to boost-converter OUT-.
@@ -479,7 +456,7 @@ Before final power-up, verify all of the following:
 - No wire bypasses drain-to-source and leaves the LED permanently grounded.
 - The MOSFET metal tab cannot touch grounded or live metal.
 - LED current does not pass through a breadboard or thin signal jumper.
-- USB data conductors and unused switch legs are individually insulated.
+- Unused USB data conductors are individually insulated.
 - Camera and DSI ribbons are fully seated and latched.
 - Power cables and ribbons have strain relief.
 

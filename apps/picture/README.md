@@ -17,11 +17,6 @@ power-budget guidance, assembly procedure, and electrical safety checks.
 
 All pin names below are BCM GPIO numbers, not physical header numbers.
 
-- Mode switch: GPIO26, physical pin 37.
-  - Connect the center/common leg to GPIO26.
-  - Connect one outside leg to ground (physical pin 39).
-  - Leave the other outside leg disconnected.
-  - Grounded selects video; the open/pulled-up position selects photo.
 - Capture button (BTN1): GPIO16, physical pin 36, to ground on physical pin 34.
 - LED MOSFET gate: GPIO21, physical pin 40.
 - Small pattern LED: GPIO12, physical pin 32, through a 330 ohm resistor to
@@ -53,12 +48,17 @@ protection, and thermal shutdown.
 
 ## Capture behavior
 
-Photo mode:
+Photo capture:
 
-- BTN1 immediately replaces the saved picture with the live preview.
-- The small pattern LED runs three slow flashes (0.5 seconds off, 0.5 seconds
-  on), followed by three fast flashes during the fourth second.
-- The final fast flash stays on while the photo is captured.
+- Press and release BTN1 in under one second. Nothing starts on the press edge;
+  releasing the button immediately turns on the small pattern LED, starts the
+  camera, and begins the photo process. The live preview replaces the saved
+  media as soon as the first camera frame is available.
+- The small pattern LED turns on first, then runs three slow flashes (0.5
+  seconds on, 0.5 seconds off), followed by three fast flashes during the
+  fourth second.
+- At the end of the flashes, the small pattern LED turns on while the photo is
+  captured.
 - The exact final frame already shown in the live preview is frozen, saved as
   the JPEG, and left on screen. The camera does not switch modes between
   preview and capture, eliminating the pause and framing/time mismatch.
@@ -66,18 +66,24 @@ Photo mode:
 - Additional BTN1 presses during the sequence or capture are discarded.
 - The new photo replaces the previous photo on screen.
 
-Video mode:
+Video capture:
 
-- BTN1 immediately displays the live preview and flashes the small pattern LED
-  three times over one second.
+- Press and hold BTN1. As soon as the hold reaches one second, the small pattern
+  LED turns on, the camera starts, and the recording process begins; BTN1 does
+  not need to be released first. The preview appears as soon as the first frame
+  is available.
+- The small pattern LED turns on first and flashes three times over one second.
 - Recording then starts with the small pattern LED on.
 - A solid red dot in the preview's top-right corner flashes for half a second
   on and half a second off.
-- BTN1 stops an active recording. Recording also stops automatically at
-  20 seconds.
+- Releasing the initial long hold does not stop recording. After that release,
+  press and release BTN1 again to stop; stopping occurs on the release edge.
+  Recording also stops automatically at 20 seconds.
 - At the 20-second limit, recording ends before the small pattern LED flashes
   three times over one second to confirm the automatic stop.
-- Presses during the one-second pre-recording flash sequence are discarded.
+- If the initial hold is released during the one-second pre-recording flashes,
+  that release is ignored as intended. A subsequent press and release requests
+  a stop, including during the remaining pre-recording flashes.
 - Every completed video is saved and then looped full-screen continuously. A
   manually stopped video starts looping immediately; an automatically stopped
   video starts after the ending small-LED flashes.
@@ -85,8 +91,8 @@ Video mode:
   keyframe, avoiding repeated file and codec initialization.
 - The small pattern LED turns off after recording and remains off during video
   playback.
-- Pressing BTN1 during a video loop ends playback and starts a new photo or
-  video capture according to the current mode-switch position.
+- During a video loop, a short press and release starts a photo process; a
+  one-second hold starts a video process.
 
 BTN2 directly toggles the LED strip on or off. The selected strip state remains
 steady during photo countdowns, video countdowns, recording, ending flashes,
@@ -94,8 +100,10 @@ and playback. Only the small pattern LED performs the slow and fast capture
 animations. It always follows the requested pattern and is unaffected by BTN2.
 The strip starts on when the app starts.
 
-The mode switch is read when BTN1 requests a new capture. Moving it during an
-active photo or video capture does not interrupt that capture.
+The camera is stopped while a saved photo is displayed or a saved video loops,
+then restarted only when a capture process begins. This avoids leaving an
+unconsumed camera stream running long enough for the Pi camera frontend to time
+out.
 
 ## Install
 
@@ -189,7 +197,8 @@ The combined size of timestamped photos and videos in `media` is limited to
 start another photo or video. The display briefly shows **Storage full**, then
 returns to the current photo or resumes the current video loop. Existing media
 is never automatically deleted. After files are manually removed, the next
-BTN1 press recalculates usage and capture becomes available again.
+short-release or long-hold capture attempt recalculates usage and becomes
+available again.
 
 Older captures inside legacy `media/photos` or `media/videos` folders are still
 discovered, displayed, and included in the storage limit.
@@ -199,15 +208,14 @@ discovered, displayed, and included in the storage limit.
 The defaults can be changed through environment variables before running the
 app:
 
-- `MODE_SWITCH_PIN=26`
 - `CAPTURE_BUTTON_PIN=16`
 - `LED_OUTPUT_PIN=21`
 - `PATTERN_LED_PIN=12`
 - `LED_TOGGLE_BUTTON_PIN=17`
-- `VIDEO_MODE_WHEN_GROUNDED=true`
 - `LED_ACTIVE_HIGH=true`
 - `PATTERN_LED_ACTIVE_HIGH=true`
 - `BUTTON_BOUNCE_SECONDS=0.08`
+- `CAPTURE_HOLD_SECONDS=1.0`
 - `CAMERA_PREVIEW_WIDTH=1280`
 - `CAMERA_PREVIEW_HEIGHT=720`
 - `CAMERA_SENSOR_WIDTH=2304`

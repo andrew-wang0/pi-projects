@@ -30,15 +30,14 @@ def _bool_env(name: str, default: bool) -> bool:
 
 @dataclass(frozen=True)
 class PinConfig:
-    mode_switch: int
     capture_button: int
     led_output: int
     pattern_led_output: int
     led_toggle_button: int
     led_active_high: bool
     pattern_led_active_high: bool
-    video_mode_when_grounded: bool
     button_bounce_seconds: float
+    capture_hold_seconds: float
 
 
 @dataclass(frozen=True)
@@ -72,15 +71,14 @@ def load_config() -> AppConfig:
     media_dir = Path(os.getenv("PICTURE_MEDIA_DIR", app_dir / "media")).expanduser()
 
     pins = PinConfig(
-        mode_switch=_int_env("MODE_SWITCH_PIN", 26),
         capture_button=_int_env("CAPTURE_BUTTON_PIN", 16),
         led_output=_int_env("LED_OUTPUT_PIN", 21),
         pattern_led_output=_int_env("PATTERN_LED_PIN", 12),
         led_toggle_button=_int_env("LED_TOGGLE_BUTTON_PIN", 17),
         led_active_high=_bool_env("LED_ACTIVE_HIGH", True),
         pattern_led_active_high=_bool_env("PATTERN_LED_ACTIVE_HIGH", True),
-        video_mode_when_grounded=_bool_env("VIDEO_MODE_WHEN_GROUNDED", True),
         button_bounce_seconds=_float_env("BUTTON_BOUNCE_SECONDS", 0.08),
+        capture_hold_seconds=_float_env("CAPTURE_HOLD_SECONDS", 1.0),
     )
     camera = CameraConfig(
         preview_size=(
@@ -120,7 +118,6 @@ def load_config() -> AppConfig:
 
 def _validate(config: AppConfig) -> None:
     pin_values = (
-        config.pins.mode_switch,
         config.pins.capture_button,
         config.pins.led_output,
         config.pins.pattern_led_output,
@@ -132,6 +129,8 @@ def _validate(config: AppConfig) -> None:
         raise ValueError("GPIO assignments must be BCM pin numbers from 0 through 27")
     if config.pins.button_bounce_seconds < 0:
         raise ValueError("BUTTON_BOUNCE_SECONDS cannot be negative")
+    if config.pins.capture_hold_seconds <= 0:
+        raise ValueError("CAPTURE_HOLD_SECONDS must be positive")
 
     for name, size in (
         ("preview", config.camera.preview_size),

@@ -49,7 +49,11 @@ def main() -> None:
                 assert led is not None
                 led.toggle_strip()
             else:
-                playback_interrupt.set()
+                if event in {
+                    ControlEvent.CAPTURE_HELD,
+                    ControlEvent.CAPTURE_RELEASED,
+                }:
+                    playback_interrupt.set()
                 control_events.put(event)
 
         controls = PhysicalControls(config.pins, on_control_event)
@@ -60,7 +64,6 @@ def main() -> None:
             camera=camera,
             display=display,
             led=led,
-            controls=controls,
             control_events=control_events,
             stop_event=stop_event,
             playback_interrupt=playback_interrupt,
