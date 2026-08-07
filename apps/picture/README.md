@@ -3,7 +3,7 @@
 `picture` is a full-screen interactive camera display for a Raspberry Pi 3A+,
 the 7-inch DSI display, and a Camera Module 3 Wide. It continuously displays
 the newest capture—showing a photo or looping a video—temporarily replaces it
-with a live camera preview during capture, and records videos up to 30 seconds.
+with a live camera preview during capture, and records videos up to 20 seconds.
 
 The app uses Pygame for the display, Picamera2 with the hardware H.264 encoder
 and PyAV MP4 output for the camera, and gpiozero with the `lgpio` backend for
@@ -74,8 +74,8 @@ Video mode:
 - A solid red dot in the preview's top-right corner flashes for half a second
   on and half a second off.
 - BTN1 stops an active recording. Recording also stops automatically at
-  30 seconds.
-- At the 30-second limit, recording ends before the small pattern LED flashes
+  20 seconds.
+- At the 20-second limit, recording ends before the small pattern LED flashes
   three times over one second to confirm the automatic stop.
 - Presses during the one-second pre-recording flash sequence are discarded.
 - Every completed video is saved and then looped full-screen continuously. A
@@ -216,7 +216,7 @@ app:
 - `CAMERA_HFLIP=true`
 - `CAMERA_VFLIP=false`
 - `VIDEO_BITRATE=8000000`
-- `VIDEO_MAX_SECONDS=30` (values above 30 are clamped to 30)
+- `VIDEO_MAX_SECONDS=20` (values above 20 are clamped to 20)
 - `DISPLAY_FRAME_RATE=30`
 - `PICTURE_MEDIA_DIR=/path/to/media`
 - `MEDIA_MAX_GB=48`
