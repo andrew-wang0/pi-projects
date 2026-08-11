@@ -12,34 +12,34 @@ conservative for the Pi 3A+'s memory.
 
 ## Default wiring
 
-See [WIRING.md](WIRING.md) for the complete circuit, parts list, MOSFET pinout,
-power-budget guidance, assembly procedure, and electrical safety checks.
+See [WIRING.md](WIRING.md) for the complete circuit, parts list, MOSFET
+controller wiring, power-budget guidance, assembly procedure, and electrical
+safety checks.
 
 All pin names below are BCM GPIO numbers, not physical header numbers.
 
-- Capture button (BTN1): GPIO16, physical pin 36, to ground on physical pin 34.
-- LED MOSFET gate: GPIO21, physical pin 40.
+- Capture button: GPIO17, physical pin 11, to ground on physical pin 9.
+- LED-strip PWM: GPIO18, physical pin 12, to the MOSFET controller's
+  3.3 V-compatible PWM/input terminal.
 - Small pattern LED: GPIO12, physical pin 32, through a 330 ohm resistor to
   the LED anode; LED cathode to ground on physical pin 30.
-- LED-strip on/off button (BTN2): GPIO17, physical pin 11, to ground
-  (physical pin 9 is convenient).
 
 A four-leg tactile button has two permanently connected legs on each side.
 Use one leg from each opposite side, not two legs from the same side. The app
-enables the Pi's internal pull-up resistors, so neither button needs an
-external pull-up.
+enables the Pi's internal pull-up resistor, so the button needs no external
+pull-up.
 
-For a direct IRLB8721 low-side circuit:
+For a MOSFET controller with a PWM/input terminal:
 
-1. Connect GPIO21 to the MOSFET gate through a 330 ohm resistor.
-2. Add a 10 kohm resistor from gate to source so the strip stays off while the
-   Pi boots.
-3. Connect the MOSFET source to the boost converter's OUT- and Pi ground.
-4. Connect the MOSFET drain to the LED strip's negative lead.
-5. Connect the 12 V strip's positive lead to the boost converter's OUT+.
-6. Connect Pi USB 5 V and ground to the converter's IN+ and IN-.
+1. Confirm that the controller accepts 3.3 V PWM logic and can switch the
+   strip's full current.
+2. Connect GPIO18 (physical pin 12) to the controller PWM/input terminal.
+3. Connect Pi ground to the controller signal ground so PWM has a common
+   reference.
+4. Connect the converter and strip to the controller's power/load terminals
+   exactly as specified by the controller manufacturer.
 
-GPIO21 only drives the MOSFET gate; never power an LED strip from a GPIO pin.
+GPIO18 supplies only a PWM control signal; never power an LED strip from GPIO.
 The 5 V input current is higher than the strip's 12 V current because of the
 step-up conversion. Confirm the Pi supply, USB path, and converter can handle
 the calculated full-brightness load without undervoltage. This no-fuse build
@@ -57,8 +57,9 @@ Photo capture:
 - The small pattern LED turns on first, then runs three slow flashes (0.5
   seconds on, 0.5 seconds off), followed by three fast flashes during the
   fourth second.
-- At the end of the flashes, the small pattern LED turns on while the photo is
-  captured.
+- At the end of the flashes, the small pattern LED turns on. The app lets
+  illuminated camera frames flow for 0.2 seconds before capturing, so it does
+  not save the buffered frame from just before the LED turned on.
 - The exact final frame already shown in the live preview is frozen, saved as
   the JPEG, and left on screen. The camera does not switch modes between
   preview and capture, eliminating the pause and framing/time mismatch.
@@ -94,11 +95,10 @@ Video capture:
 - During a video loop, a short press and release starts a photo process; a
   one-second hold starts a video process.
 
-BTN2 directly toggles the LED strip on or off. The selected strip state remains
-steady during photo countdowns, video countdowns, recording, ending flashes,
-and playback. Only the small pattern LED performs the slow and fast capture
-animations. It always follows the requested pattern and is unaffected by BTN2.
-The strip starts on when the app starts.
+The LED strip has no physical on/off button. Software drives it at the
+configured peak PWM brightness. For visual testing, it currently fades from
+bright to off and back to bright every five seconds; only the small pattern
+LED performs the capture animations. The strip turns off when the app exits.
 
 The camera is stopped while a saved photo is displayed or a saved video loops,
 then restarted only when a capture process begins. This avoids leaving an
@@ -121,7 +121,7 @@ The setup script installs Picamera2, PyAV, Pillow, Pygame, gpiozero, `lgpio`,
 and a virtual environment that can see those system packages.
 
 Press Escape or `q` on an attached keyboard to exit during setup. Normal
-appliance use only requires the physical controls.
+appliance use only requires the capture button.
 
 ### Start automatically
 
@@ -208,11 +208,12 @@ discovered, displayed, and included in the storage limit.
 The defaults can be changed through environment variables before running the
 app:
 
-- `CAPTURE_BUTTON_PIN=16`
-- `LED_OUTPUT_PIN=21`
+- `CAPTURE_BUTTON_PIN=17`
+- `LED_PWM_PIN=18`
+- `LED_PWM_ACTIVE_HIGH=true`
+- `LED_PWM_FREQUENCY=1000`
+- `LED_STRIP_BRIGHTNESS=1.0` (from `0.0` off to `1.0` full brightness)
 - `PATTERN_LED_PIN=12`
-- `LED_TOGGLE_BUTTON_PIN=17`
-- `LED_ACTIVE_HIGH=true`
 - `PATTERN_LED_ACTIVE_HIGH=true`
 - `BUTTON_BOUNCE_SECONDS=0.08`
 - `CAPTURE_HOLD_SECONDS=1.0`
@@ -221,6 +222,7 @@ app:
 - `CAMERA_SENSOR_WIDTH=2304`
 - `CAMERA_SENSOR_HEIGHT=1296`
 - `CAMERA_FRAME_RATE=24`
+- `PHOTO_LIGHT_SETTLE_SECONDS=0.2`
 - `CAMERA_HFLIP=true`
 - `CAMERA_VFLIP=false`
 - `VIDEO_BITRATE=8000000`

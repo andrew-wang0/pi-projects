@@ -45,16 +45,12 @@ def main() -> None:
         led = LedStripController(config.pins)
 
         def on_control_event(event: ControlEvent) -> None:
-            if event is ControlEvent.LED_TOGGLE_PRESSED:
-                assert led is not None
-                led.toggle_strip()
-            else:
-                if event in {
-                    ControlEvent.CAPTURE_HELD,
-                    ControlEvent.CAPTURE_RELEASED,
-                }:
-                    playback_interrupt.set()
-                control_events.put(event)
+            if event in {
+                ControlEvent.CAPTURE_HELD,
+                ControlEvent.CAPTURE_RELEASED,
+            }:
+                playback_interrupt.set()
+            control_events.put(event)
 
         controls = PhysicalControls(config.pins, on_control_event)
         camera = CaptureCamera(config.camera, config.storage)

@@ -31,10 +31,11 @@ def _bool_env(name: str, default: bool) -> bool:
 @dataclass(frozen=True)
 class PinConfig:
     capture_button: int
-    led_output: int
+    led_pwm_output: int
     pattern_led_output: int
-    led_toggle_button: int
-    led_active_high: bool
+    led_pwm_active_high: bool
+    led_pwm_frequency: float
+    led_strip_brightness: float
     pattern_led_active_high: bool
     button_bounce_seconds: float
     capture_hold_seconds: float
@@ -45,6 +46,7 @@ class CameraConfig:
     preview_size: tuple[int, int]
     sensor_size: tuple[int, int]
     frame_rate: int
+    photo_light_settle_seconds: float
     video_bitrate: int
     video_max_seconds: float
     horizontal_flip: bool
@@ -71,11 +73,12 @@ def load_config() -> AppConfig:
     media_dir = Path(os.getenv("PICTURE_MEDIA_DIR", app_dir / "media")).expanduser()
 
     pins = PinConfig(
-        capture_button=_int_env("CAPTURE_BUTTON_PIN", 16),
-        led_output=_int_env("LED_OUTPUT_PIN", 21),
+        capture_button=_int_env("CAPTURE_BUTTON_PIN", 17),
+        led_pwm_output=_int_env("LED_PWM_PIN", 18),
         pattern_led_output=_int_env("PATTERN_LED_PIN", 12),
-        led_toggle_button=_int_env("LED_TOGGLE_BUTTON_PIN", 17),
-        led_active_high=_bool_env("LED_ACTIVE_HIGH", True),
+        led_pwm_active_high=_bool_env("LED_PWM_ACTIVE_HIGH", True),
+        led_pwm_frequency=_float_env("LED_PWM_FREQUENCY", 1000.0),
+        led_strip_brightness=_float_env("LED_STRIP_BRIGHTNESS", 1.0),
         pattern_led_active_high=_bool_env("PATTERN_LED_ACTIVE_HIGH", True),
         button_bounce_seconds=_float_env("BUTTON_BOUNCE_SECONDS", 0.08),
         capture_hold_seconds=_float_env("CAPTURE_HOLD_SECONDS", 1.0),
@@ -96,6 +99,10 @@ def load_config() -> AppConfig:
             ),
         ),
         frame_rate=_int_env("CAMERA_FRAME_RATE", 24),
+        photo_light_settle_seconds=_float_env(
+            "PHOTO_LIGHT_SETTLE_SECONDS",
+            0.2,
+        ),
         video_bitrate=_int_env("VIDEO_BITRATE", 8_000_000),
         video_max_seconds=min(_float_env("VIDEO_MAX_SECONDS", 20.0), 20.0),
         horizontal_flip=_bool_env("CAMERA_HFLIP", True),
@@ -119,9 +126,8 @@ def load_config() -> AppConfig:
 def _validate(config: AppConfig) -> None:
     pin_values = (
         config.pins.capture_button,
-        config.pins.led_output,
+        config.pins.led_pwm_output,
         config.pins.pattern_led_output,
-        config.pins.led_toggle_button,
     )
     if len(set(pin_values)) != len(pin_values):
         raise ValueError("All GPIO assignments must use different BCM pins")
@@ -131,6 +137,10 @@ def _validate(config: AppConfig) -> None:
         raise ValueError("BUTTON_BOUNCE_SECONDS cannot be negative")
     if config.pins.capture_hold_seconds <= 0:
         raise ValueError("CAPTURE_HOLD_SECONDS must be positive")
+    if config.pins.led_pwm_frequency <= 0:
+        raise ValueError("LED_PWM_FREQUENCY must be positive")
+    if not 0.0 <= config.pins.led_strip_brightness <= 1.0:
+        raise ValueError("LED_STRIP_BRIGHTNESS must be between 0.0 and 1.0")
 
     for name, size in (
         ("preview", config.camera.preview_size),
@@ -141,6 +151,8 @@ def _validate(config: AppConfig) -> None:
 
     if config.camera.frame_rate <= 0:
         raise ValueError("CAMERA_FRAME_RATE must be positive")
+    if config.camera.photo_light_settle_seconds <= 0:
+        raise ValueError("PHOTO_LIGHT_SETTLE_SECONDS must be positive")
     if config.camera.video_bitrate <= 0:
         raise ValueError("VIDEO_BITRATE must be positive")
     if config.camera.video_max_seconds <= 0:

@@ -59,6 +59,7 @@ class PictureApp:
         self._playback_interrupt = playback_interrupt
         self._phase = CapturePhase.IDLE
         self._cue_player: CuePlayer | None = None
+        self._photo_capture_at: float | None = None
         self._video_started_at: float | None = None
         self._pending_video_path: Path | None = None
         self._current_media: Path | None = None
@@ -105,9 +106,7 @@ class PictureApp:
             except Empty:
                 return
 
-            if event is ControlEvent.LED_TOGGLE_PRESSED:
-                self._led.toggle_strip()
-            elif not ignore_capture:
+            if not ignore_capture:
                 if event is ControlEvent.CAPTURE_PRESSED:
                     self._handle_capture_pressed()
                 elif event is ControlEvent.CAPTURE_HELD:
@@ -187,6 +186,12 @@ class PictureApp:
         self._led.request(cue_player.start(now))
 
     def _advance_active_capture(self, now: float) -> None:
+        if self._phase is CapturePhase.PHOTO_CAPTURE:
+            assert self._photo_capture_at is not None
+            if now >= self._photo_capture_at:
+                self._capture_photo()
+            return
+
         if self._phase in {
             CapturePhase.PHOTO_COUNTDOWN,
             CapturePhase.VIDEO_COUNTDOWN,
@@ -214,7 +219,10 @@ class PictureApp:
         self._cue_player = None
         if self._phase is CapturePhase.PHOTO_COUNTDOWN:
             self._led.request(True)
-            self._capture_photo()
+            self._phase = CapturePhase.PHOTO_CAPTURE
+            self._photo_capture_at = (
+                now + self._config.camera.photo_light_settle_seconds
+            )
         elif self._phase is CapturePhase.VIDEO_COUNTDOWN:
             self._led.request(True)
             self._start_video()
@@ -228,7 +236,6 @@ class PictureApp:
                 self._play_video(video_path)
 
     def _capture_photo(self) -> None:
-        self._phase = CapturePhase.PHOTO_CAPTURE
         try:
             frame = self._last_preview_frame
             if frame is None:
@@ -242,6 +249,7 @@ class PictureApp:
         except Exception:
             LOGGER.exception("Photo capture failed")
         finally:
+            self._photo_capture_at = None
             self._phase = CapturePhase.IDLE
             self._led.request(False)
             self._pause_camera_while_idle()

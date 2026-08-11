@@ -1,467 +1,289 @@
 # Picture hardware wiring guide
 
-This document covers the complete wiring for the `picture` app on a Raspberry
-Pi 3 Model A+ with:
+This guide covers the `picture` app on a Raspberry Pi 3 Model A+ with:
 
 - Raspberry Pi Camera Module 3 Wide
 - 7-inch DSI display
-- 12 V, non-addressable LED strip
-- 5 V-to-12 V DC boost converter
-- IRLB8721 N-channel MOSFET
-- Two four-leg momentary tactile buttons
+- one capture button
+- one small pattern LED
+- a 12 V non-addressable LED strip
+- a 3.3 V-compatible PWM MOSFET controller
+- a regulated 5 V-to-12 V boost converter
 
 The GPIO assignments match the defaults in `config.py`.
 
+## Pin summary
+
+Software settings use **BCM GPIO numbers**. Physical pin numbers identify
+positions on the Pi's 40-pin header.
+
+| Function              | BCM GPIO | Physical pin | Connection                       |
+| --------------------- | -------: | -----------: | -------------------------------- |
+| Capture button input  |   GPIO17 |           11 | One side of capture button       |
+| Capture button ground |      GND |            9 | Other side of capture button     |
+| LED-strip PWM output  |   GPIO18 |           12 | MOSFET controller PWM/input      |
+| PWM signal ground     |      GND |           14 | MOSFET controller signal ground  |
+| Small pattern LED     |   GPIO12 |           32 | 330 ohm resistor, then LED anode |
+| Pattern LED ground    |      GND |           30 | LED cathode                      |
+
+Use these exact physical-header connections:
+
+```text
+Capture button:
+  physical pin 11 (GPIO17) ---- button ---- physical pin 9 (GND)
+
+MOSFET controller signal:
+  physical pin 12 (GPIO18/PWM0) ---------- controller PWM/input
+  physical pin 14 (GND) ------------------ controller signal GND
+
+Pattern LED:
+  physical pin 32 (GPIO12) ---- 330 ohm --- LED anode (+)
+  physical pin 30 (GND) ------------------- LED cathode (-)
+```
+
+Physical pin 9 is ground, not a programmable GPIO. “Move the capture button
+to pins 9 and 11” therefore means the button connects GPIO17 on physical pin
+11 to ground on physical pin 9.
+
+The previous LED-strip toggle button is removed. GPIO17, formerly assigned to
+that button, is now the capture-button input. The previous GPIO16 capture
+connection and GPIO21 strip-control connection are unused.
+
 ## Read this before wiring
 
-Disconnect the Pi's power and every LED power source before changing any wire.
-The project uses low voltage, but a shorted 5 V input, 12 V converter output,
-or USB cable can still overheat wiring, damage the Pi, corrupt the SD card, or
-start a fire.
-
-The design assumes the LED product is a complete **12 V strip intended to run
-directly from regulated 12 V**, with its own current-limiting resistors or
-controller. It is not suitable for bare LEDs without current limiting or an
-addressable strip that requires a data signal.
+Disconnect the Pi, converter, controller, display, and every LED power source
+before changing wiring.
 
 Raspberry Pi GPIO is 3.3 V only and is not 5 V tolerant:
 
-- Never connect USB 5 V or the converter's 12 V output to GPIO12, GPIO16,
-  GPIO17, or GPIO21.
-- Never connect the LED strip directly to GPIO21.
-- GPIO21 drives only the MOSFET gate.
-- The buttons connect GPIO inputs to ground, not to 5 V.
+- Never connect 5 V or 12 V to GPIO12, GPIO17, or GPIO18.
+- Never connect the LED strip or its load current directly to a GPIO pin.
+- GPIO18 supplies only the MOSFET controller's PWM control signal.
+- The MOSFET controller input must recognize 3.3 V as a valid high level.
+- Pi ground and controller signal ground must share a reference unless the
+  controller has a specifically documented isolated input.
 
-### Important IRLB8721 limitation
+Check the MOSFET controller documentation before wiring. Terminal names and
+power-path arrangements vary. This guide cannot safely infer a controller's
+load-terminal order from its product category alone.
 
-The IRLB8721 datasheet guarantees its on-resistance at gate voltages of 4.5 V
-and 10 V. It does **not** guarantee an on-resistance at the Pi's 3.3 V GPIO
-level. Its gate-threshold specification is measured at only 25 microamps and
-does not mean that the MOSFET is fully on at that voltage.
+The controller must be rated for:
 
-Direct 3.3 V drive may be adequate for a small 12 V LED-strip load, but it must
-be validated under the strip's actual current. For the most robust final
-build, use either:
-
-- an N-channel MOSFET whose datasheet specifies a maximum `RDS(on)` at a gate
-  voltage of 2.5 V or 3.0 V; or
-- a 3.3 V-compatible, non-inverting MOSFET gate driver that drives the
-  IRLB8721 gate at 4.5-5 V.
-
-Never connect 5 V directly to the gate while it is still connected to GPIO21.
+- the strip's 12 V supply;
+- the strip's measured continuous current;
+- the selected PWM frequency; and
+- operation at the actual enclosure temperature.
 
 ## Parts required
 
-- Raspberry Pi 3 Model A+ and a stable 5.1 V power supply
+- Raspberry Pi 3 Model A+ with a stable 5.1 V supply
 - 7-inch DSI display and its required power connection
-- Camera Module 3 Wide and correct CSI ribbon cable
-- 12 V LED strip
-- Regulated 5 V-to-12 V boost converter with adequate continuous input/output
-  current ratings and documented overcurrent, short-circuit, and thermal
-  protection
-- IRLB8721 in a TO-220AB package
+- Camera Module 3 Wide and the correct CSI ribbon cable
+- One normally-open momentary tactile button
 - One small, two-leg, high-efficiency indicator LED
-- Two 330 ohm, 1/4 W resistors: one for the MOSFET gate and one for the small
-  LED
-- One 10 kilohm, 1/4 W resistor for the gate pulldown
-- Two normally-open, four-leg tactile buttons
+- One 330 ohm, 1/4 W resistor for the pattern LED
+- 12 V non-addressable LED strip with its required current limiting
+- 3.3 V-compatible PWM MOSFET controller rated for the strip
+- Regulated 5 V-to-12 V boost converter with adequate continuous ratings and
+  documented overcurrent, short-circuit, and thermal protection
 - Properly rated power wire for the LED current
 - Smaller insulated hookup wire for GPIO signals
-- Soldered perfboard, terminal blocks, or another secure final connection
-  method
-- Heat-shrink tubing and strain relief
-- Digital multimeter
-- Optional heatsink for the MOSFET, only if measurements show it is needed
+- Secure terminal blocks or soldered connections
+- Heat-shrink tubing, strain relief, and a digital multimeter
 
-Do not carry the LED strip's load current through thin Dupont jumpers or
-solderless breadboard contacts. Those are acceptable for temporary GPIO signal
-testing, not for an unattended power circuit.
+Do not carry LED-strip load current through thin Dupont jumpers or solderless
+breadboard contacts. Those are suitable only for temporary signal testing.
 
-## GPIO connection summary
+## Capture button
 
-All software pin names use **BCM numbering**. Physical pin numbers identify
-positions on the Pi's 40-pin header.
-
-| Function                      | BCM GPIO | Physical pin | Connects to                        |
-| ----------------------------- | -------: | -----------: | ---------------------------------- |
-| Capture button, BTN1          |   GPIO16 |           36 | One side of capture button         |
-| Small pattern LED             |   GPIO12 |           32 | 330 ohm resistor, then LED anode   |
-| LED MOSFET control            |   GPIO21 |           40 | 330 ohm resistor, then MOSFET gate |
-| Small pattern LED ground      |      GND |           30 | LED cathode                        |
-| BTN1 ground                   |      GND |           34 | Other side of capture button       |
-| LED-strip on/off button, BTN2 |   GPIO17 |           11 | One side of strip toggle button    |
-| Upper control ground          |      GND |            9 | Other side of BTN2                 |
-
-The relevant bottom end of the header is:
+The app enables an internal pull-up on GPIO17. The open button reads high;
+pressing it connects GPIO17 to ground.
 
 ```text
-Physical pin 29: unused     Physical pin 30: GND
-Physical pin 31: unused     Physical pin 32: GPIO12
-Physical pin 33: unused     Physical pin 34: GND
-Physical pin 35: unused     Physical pin 36: GPIO16
-Physical pin 37: unused     Physical pin 38: unused
-Physical pin 39: GND        Physical pin 40: GPIO21
+Pi physical pin 11 (GPIO17) ---- button ---- Pi physical pin 9 (GND)
 ```
 
-Verify the pin numbers against the Pi's header markings or the `pinout` command
-before connecting anything. Do not count pins from memory.
+The button must be normally open. A typical four-leg tactile button has two
+permanently connected legs on each side. Use one leg from each opposite side.
+With power disconnected, confirm the leg pairs with a multimeter.
 
-## Control wiring
+Button behavior:
 
-The app enables internal pull-up resistors for both buttons. An open input
-reads high; pressing a button pulls the input low.
+- Press and release in under one second to start a photo.
+- Hold for one second to start video while the button remains held.
+- Releasing that initial hold does not stop recording.
+- Press and release again to stop video.
+- Video also stops automatically after 20 seconds.
 
-No external button pull-up resistors and no 3.3 V button connections are
-required.
+There is no physical LED-strip on/off button.
 
-### Identify the tactile-button legs
-
-On a typical four-leg tactile button:
-
-- the two legs on one side are permanently connected;
-- the two legs on the opposite side are permanently connected; and
-- pressing the button connects the two sides.
-
-Button package layouts vary. With all power disconnected, use the multimeter's
-continuity mode to identify the two permanent pairs. Select one leg from each
-different pair. If both wires are attached to the same permanent pair, the
-input will appear permanently pressed or the button will do nothing useful.
-
-### BTN1: capture/start/stop
-
-Connect:
-
-```text
-Pi physical pin 36 (GPIO16) ---- BTN1 ---- Pi physical pin 34 (GND)
-```
-
-BTN1 must be normally open. Pressing it grounds GPIO16. The software acts on
-both the press and release edges:
-
-- Press and release in under one second to start a photo process on release.
-- Hold for one second to start the video process while the button is still
-  held.
-- Releasing that initial long hold does not stop the video. Press and release
-  BTN1 again to stop recording on the second release.
-- Recording also stops automatically after 20 seconds.
-
-### BTN2: LED-strip on/off toggle
-
-Connect:
-
-```text
-Pi physical pin 11 (GPIO17) ---- BTN2 ---- Pi physical pin 9 (GND)
-```
-
-BTN2 must be normally open. Each press directly toggles the LED strip between
-steady on and steady off. Photo countdowns, video countdowns, recording, and
-ending flashes never change the strip's selected state. The strip starts on
-when the app starts.
-
-BTN2 does not affect the small pattern LED; only that small LED displays
-capture patterns.
-
-### Small two-leg pattern LED
-
-Connect:
+## Small pattern LED
 
 ```text
 Pi physical pin 32 (GPIO12) ---- 330 ohm ---- LED anode (+)
 Pi physical pin 30 (GND) -------------------- LED cathode (-)
 ```
 
-The resistor may be placed on either side of the LED, but it must be in series;
-never connect the LED directly between GPIO12 and ground.
+The resistor may be on either side of the LED, but it must be in series.
+Never connect the LED directly between GPIO12 and ground.
 
-The longer LED leg is commonly the anode. The shorter leg and flat edge on the
-LED body commonly mark the cathode, but verify the specific LED. If it does not
-light, disconnect power and recheck polarity rather than bypassing the
-resistor.
+GPIO12 follows the app's photo and video capture patterns. It turns off after
+capture and remains off during saved-media playback. This indicator is
+independent of the LED-strip PWM output.
 
-GPIO12 follows the app's requested LED pattern directly. It follows all slow
-and fast capture flashes, stays on while video is recording, then turns off
-after a photo or video is saved. It remains off while a photo is displayed or
-a video loops. BTN2 independently toggles the MOSFET and 12 V strip, so the
-small LED continues to show every capture pattern regardless of the strip's
-on/off state.
+## LED-strip PWM controller
 
-## IRLB8721 and LED-strip wiring
+GPIO18 on physical pin 12 provides PWM0 and is the default strip-control pin.
+GPIO12 on physical pin 32 remains dedicated to the pattern LED; despite the
+similar numbers, physical pin 12 and BCM GPIO12 are different pins.
 
-### Confirm the MOSFET pinout
-
-For the Infineon IRLB8721 TO-220AB package, viewed from the front with the flat
-printed face toward you and the legs pointing downward:
+Connect the control side:
 
 ```text
-Left leg       Center leg       Right leg
-Pin 1          Pin 2            Pin 3
-Gate (G)       Drain (D)        Source (S)
+Pi physical pin 12 (GPIO18/PWM0) ---- controller PWM/input
+Pi physical pin 14 (GND) ------------ controller signal GND
 ```
 
-The exposed metal tab is also electrically connected to the **drain**. Keep it
-insulated from the Pi, grounded metal, enclosure hardware, and other
-conductors unless a correctly insulated mounting arrangement is used.
+Do not connect GPIO18 directly to a MOSFET gate unless you intentionally return
+to a separately designed direct-gate circuit. The current design expects a
+MOSFET controller module with a logic/PWM input.
 
-Confirm the part number and its manufacturer datasheet before soldering.
-Different packages or substitute parts may have a different pinout.
-
-### Gate network
-
-Wire the gate exactly as follows:
+The software defaults are:
 
 ```text
-Pi physical pin 40 (GPIO21) ---- 330 ohm ---- Gate
-                                                |
-                                             10 kilohm
-                                                |
-Source / power ground --------------------------+
+LED_PWM_PIN=18
+LED_PWM_ACTIVE_HIGH=true
+LED_PWM_FREQUENCY=1000
+LED_STRIP_BRIGHTNESS=1.0
 ```
 
-The 330 ohm resistor limits the brief GPIO current used to charge and discharge
-the MOSFET gate. The app switches only a few times per second, so there is no
-need for a smaller high-speed gate resistor.
+`LED_STRIP_BRIGHTNESS` is PWM duty cycle: `0.0` is off, `0.5` is 50 percent,
+and `1.0` is full output. For visual testing, the app currently uses this value
+as the peak while fading bright to off in 2.5 seconds and back to bright in
+2.5 seconds. The complete cycle takes five seconds. The strip is switched off
+during clean app shutdown.
 
-The 10 kilohm gate-to-source resistor keeps the MOSFET off while the Pi boots,
-shuts down, or leaves GPIO21 floating. Place it physically near the MOSFET.
-It must connect from gate to **source**, not from drain to source.
+If the controller input is active-low, set `LED_PWM_ACTIVE_HIGH=false`.
+Only change the PWM frequency after checking the controller's supported range.
+A frequency that is too low can produce camera banding or visible flicker; a
+frequency outside the controller's range can cause incorrect switching or
+heating.
 
-### Low-side load connection
+## Controller power and load path
 
-The MOSFET switches the 12 V strip's negative return:
+Follow the terminal labels and manufacturer diagram for the exact MOSFET
+controller. A common non-isolated low-side controller is conceptually wired:
 
 ```text
-Boost converter OUT+ (+12 V) ---- LED strip positive (+)
-LED strip negative (-) ---------- MOSFET drain
-MOSFET source ------------------- Boost converter OUT-
-GPIO21 -------- 330 ohm --------- MOSFET gate
-MOSFET gate ---- 10 kilohm ------ MOSFET source
-Pi ground ----------------------- MOSFET source / converter ground
+Boost converter OUT+ (+12 V) ---- controller power/load positive
+Boost converter OUT- (0 V) ------- controller power ground
+LED strip positive (+) ----------- controller load positive
+LED strip negative (-) ----------- controller switched load negative
+Pi ground ------------------------ controller signal ground
+GPIO18 --------------------------- controller PWM/input
 ```
 
-Do not reverse drain and source. The circuit may appear partly functional
-through the MOSFET's body diode but will not switch correctly.
+Some modules use different terminal arrangements, combine positive terminals,
+switch the high side, include optical isolation, or require a separate logic
+supply. Do not copy the conceptual diagram over contradictory controller
+documentation.
 
-The Pi and LED supply must share a ground so the MOSFET sees the correct
-gate-to-source voltage. A shared ground does not mean that LED load current
-should travel through a thin GPIO jumper; use a proper power-ground conductor
-for the LED current.
+The strip's load current must stay in the controller/converter power wiring.
+It must not flow through the Pi ground pin or the thin PWM ground jumper.
 
-An LED strip is not an inductive relay or motor, so this circuit does not
-normally require a flyback diode.
+## Boost converter and power budget
 
-## 5 V-to-12 V boost-converter wiring
+Before connecting the strip, power the boost converter input and adjust its
+output to 12.0 V with a multimeter. Disconnect power before attaching the
+controller and strip.
 
-Use a USB power breakout or a properly modified USB extension cable between
-the Pi's USB port and the converter input. Do not modify the Pi itself.
-
-Typical USB 2.0 wire colors are red for +5 V and black for ground, but colors
-are not guaranteed. Verify every conductor with a meter. Do not rely only on
-wire color.
-
-Wire the complete power path:
-
-```text
-Pi USB +5 V ---------------- Boost converter IN+
-Pi USB ground -------------- Boost converter IN-
-
-Boost converter OUT+ ------- LED strip positive (+12 V)
-LED strip negative --------- IRLB8721 drain
-IRLB8721 source ------------ Boost converter OUT-
-
-Pi GPIO ground ------------- IRLB8721 source / converter ground
-GPIO21 ---- 330 ohm -------- IRLB8721 gate
-Gate ------- 10 kilohm ----- IRLB8721 source
-```
-
-If the cable has data wires, leave D+ and D- disconnected from the LED power
-circuit and insulate them individually. Do not use the USB shield as the LED
-return conductor.
-
-Most non-isolated boost modules have a common negative node, meaning IN- and
-OUT- are electrically connected. Verify this with the module documentation or
-a continuity measurement while it is completely unpowered. The direct GPIO
-gate circuit requires the MOSFET source and Pi ground to share a reference.
-If IN- and OUT- are not common and the converter documentation does not
-explicitly permit bonding OUT- to Pi ground, do not use that converter with
-this direct gate circuit.
-
-The strip's negative lead must connect only to the MOSFET drain. A direct wire
-from strip negative to converter OUT-, USB ground, or Pi ground would bypass
-the MOSFET and leave the strip permanently on.
-
-### Converter setup
-
-Before connecting the LED strip, power the converter input and set its output
-to 12.0 V using a multimeter. Adjustable boost modules can arrive set above
-12 V. Disconnect power after adjustment, then attach the strip.
-
-The converter must be rated for:
-
-- a 5 V input;
-- a regulated 12 V output;
-- at least the strip's measured full-brightness output current continuously;
-- the calculated 5 V input current continuously; and
-- operation inside the enclosure at its real temperature.
-
-Do not rely on an advertised peak rating. Small boost modules often require
-substantial derating or airflow for continuous operation.
-
-### 5 V input-current calculation
-
-A boost converter draws more current at 5 V than the strip uses at 12 V. Use:
+The boost converter draws more current at 5 V than the strip uses at 12 V:
 
 ```text
 5 V input current =
     (12 V × strip current at 12 V) / (5 V × converter efficiency)
 ```
 
-For example, a strip drawing 0.5 A at 12 V consumes 6 W. At 85% converter
-efficiency, the converter needs approximately:
+For example, a strip drawing 0.5 A at 12 V consumes 6 W. At 85 percent
+efficiency:
 
 ```text
-6 W / (5 V × 0.85) = 1.41 A from the Pi USB port
+6 W / (5 V × 0.85) = 1.41 A at 5 V
 ```
 
-The Pi 3A+ documentation recommends a 2.5 A Pi supply, but the board has no
-simple fixed USB-current guarantee for this use: available current is limited
-by the PSU, board circuitry, connector, cable, display, camera, and Pi load.
-The Camera Module alone can add approximately 250 mA according to Raspberry Pi
-power guidance. A DSI display and illuminated strip add further load.
+Confirm that the Pi supply, USB path, converter, controller, connectors, and
+wiring all have adequate continuous ratings with margin. Camera and display
+load reduce the current available to the strip. Undervoltage can reset the Pi,
+corrupt captures, or damage the filesystem.
 
-USB power is acceptable only after measuring the strip's 12 V current,
-calculating the required 5 V current, and confirming the complete power budget
-with margin. Undervoltage can reset the Pi or corrupt captures even when the
-strip appears to work.
-
-This build has no dedicated LED-branch fuse. Therefore its fault protection
-depends on the Pi supply, Pi board, USB path, and boost converter. Use a
-converter with documented input current limiting, output short-circuit
-protection, and over-temperature shutdown. Without those protections, a
-no-fuse circuit cannot be treated as protected against a wiring or strip
-short.
-
-If the calculated input current is too high for the Pi USB path, power the
-boost converter from a separate regulated 5 V supply of adequate capacity.
-Join that supply's ground to Pi ground for the GPIO reference, but do not join
-the external +5 V output to the Pi's 5 V rail.
-
-Use short, adequately rated power conductors, secure screw terminals or
-soldered joints, heat-shrink over exposed connections, and strain relief where
-the USB cable enters the enclosure.
+If the LED branch has no dedicated fuse, use a converter/controller with
+documented current limiting, output short-circuit protection, and thermal
+shutdown.
 
 ## Camera and DSI display
 
-The camera and display use separate ribbon connectors:
-
-- Camera Module 3 Wide connects to the Pi's CSI/camera connector.
-- The display connects to the Pi's DSI/display connector.
-
-Never insert or remove either ribbon while the Pi or display is powered. Open
-the connector latch gently, insert the ribbon fully and squarely, then close
-the latch. Contact orientation differs between boards and cable ends, so
-follow the markings for the exact Pi, camera, and display rather than assuming
-that exposed contacts always face the same direction.
-
-The DSI ribbon is not a substitute for the display's required 5 V power
-connection. Keep the display's already working power arrangement specified by
-its manufacturer. Do not route LED load current through a display power board
-or small display-to-Pi jumper unless that board and wiring are explicitly
-rated for the total current.
-
-Keep the MOSFET power wiring and LED-current loop away from the CSI ribbon.
-Secure all ribbons so enclosure movement cannot pull them from their
-connectors.
+The camera uses the CSI connector and the display uses the DSI connector.
+Never insert or remove either ribbon while powered. Keep LED power wiring and
+the controller away from the CSI ribbon and provide strain relief.
 
 ## Recommended assembly order
 
-1. Shut down the Pi and disconnect all power.
-2. Verify the GPIO physical pin numbers.
-3. Use continuity mode to identify the button pairs.
-4. Wire BTN1, BTN2, and the small pattern LED.
-5. Confirm none of those GPIO wires connects to 5 V or 12 V.
-6. On an unpowered separate board, install the IRLB8721, 330 ohm gate resistor,
-   and 10 kilohm gate-to-source resistor.
-7. Verify the MOSFET gate, drain, source, and metal-tab identities.
-8. Build the 5 V input, boost converter, 12 V output, and MOSFET power path
-   using proper power wiring.
-9. Inspect for solder bridges, loose strands, reversed MOSFET legs, and exposed
-   conductors.
-10. Power the Pi without the LED strip connected and verify the controls and
-    small pattern LED.
-11. Measure GPIO21 relative to MOSFET source:
-    - BTN2 strip-off state: approximately 0 V
-    - BTN2 strip-on state: approximately 3.1-3.3 V
-12. Disconnect power again, connect the LED strip, and perform the controlled
-    first-power checks below.
-13. Only after electrical and thermal checks pass, secure the circuit in its
-    ventilated enclosure with strain relief.
+1. Shut down the Pi and disconnect every power source.
+2. Verify physical pins 9, 11, 12, 14, 30, and 32 against `pinout`.
+3. Wire the capture button between physical pins 11 and 9.
+4. Wire the pattern LED and its resistor between physical pins 32 and 30.
+5. Confirm no button or LED signal wire reaches 5 V or 12 V.
+6. Confirm the MOSFET controller accepts 3.3 V PWM and the strip current.
+7. Connect GPIO18 and Pi ground to only the controller's control input.
+8. Build the converter/controller/strip power path using rated power wire.
+9. Inspect for loose strands, reversed polarity, and exposed conductors.
+10. Power the Pi without the strip load and verify the capture button and
+    pattern LED.
+11. Verify a PWM waveform or average voltage appears on GPIO18 while the app
+    runs. At 100 percent brightness it should be a steady logic high.
+12. Disconnect power, attach the strip, and perform the checks below.
 
-## First-power and thermal checks
+## First-power checks
 
-For first power, use a current-limited bench supply if available. Otherwise,
-use a converter with verified protection and remain ready to disconnect power.
+1. Keep the system supervised and ready to disconnect power.
+2. Confirm the strip is off before the app starts.
+3. Start the app and confirm the strip smoothly cycles from bright to off and
+   back to bright every five seconds.
+4. Confirm capture-button photo, video-start, and video-stop behavior.
+5. Confirm the small LED follows its capture pattern independently.
+6. Measure strip current at full configured brightness.
+7. Run both capture types and check:
 
-1. Confirm the strip remains fully off before the app starts.
-2. With the app running, press BTN2 to force the strip off.
-3. Start a capture and confirm the small LED still follows every flash while
-   the strip remains off.
-4. Press BTN2 again and confirm the strip turns on and remains steadily on
-   while the small LED continues its independent pattern.
-5. Confirm the strip reaches normal brightness.
-6. Measure the strip's current at full brightness.
-7. Measure `VGS` from gate to source while on. It should be close to the GPIO
-   high level.
-8. Measure `VDS` from drain to source while on.
-9. Estimate MOSFET dissipation as:
-
-   ```text
-   MOSFET power in watts = LED current in amps × VDS in volts
+   ```bash
+   vcgencmd get_throttled
    ```
 
-10. Leave the strip continuously on under supervision and monitor MOSFET,
-    connector, wire, and cable temperatures.
+8. Supervise an extended run and check controller, converter, connectors,
+   wires, and cables for abnormal heat.
 
-If the MOSFET becomes hot, the strip is dim, `VDS` is unexpectedly high, or
-any connector warms, disconnect power. Do not solve a poorly driven MOSFET
-only by adding a heatsink. Use a MOSFET specified for 2.5-3.3 V gate drive or
-a proper 5 V gate driver, and correct undersized wiring or connectors.
+`throttled=0x0` means there are no current or historical undervoltage or
+throttling flags. Correct any nonzero result before unattended use.
 
-Check the Pi after exercising both capture types:
-
-```bash
-vcgencmd get_throttled
-```
-
-`throttled=0x0` means no current or historical undervoltage/throttling flags
-are set. Any nonzero value should be decoded and corrected before unattended
-use. Also watch for low-voltage warnings, camera errors, USB resets, display
-flicker, or spontaneous reboots when the strip turns on.
+Disconnect power if the strip flickers unexpectedly, the controller heats up,
+the camera shows PWM banding, connectors warm, or the Pi reports undervoltage.
 
 ## Unpowered inspection checklist
 
-Before final power-up, verify all of the following:
-
-- GPIO16 connects to BTN1 and only reaches ground when BTN1 is pressed.
-- GPIO17 connects to BTN2 and only reaches ground when BTN2 is pressed.
-- GPIO12 reaches the small LED only through its 330 ohm resistor.
-- The small LED anode faces GPIO12 and its cathode reaches ground.
-- GPIO21 reaches the MOSFET gate only through 330 ohms.
-- The 10 kilohm resistor connects gate to source.
-- MOSFET source connects to boost-converter OUT-.
-- LED-strip negative connects only to MOSFET drain.
-- LED-strip positive receives regulated +12 V from boost-converter OUT+.
-- Converter IN+ receives 5 V from the USB power conductor.
-- Converter IN- and the MOSFET source share the Pi ground reference.
+- GPIO17 on physical pin 11 reaches only the capture button.
+- The other capture-button side reaches ground on physical pin 9.
+- There is no second/toggle button.
+- GPIO18 on physical pin 12 reaches only the controller PWM/input.
+- Controller signal ground reaches Pi ground on physical pin 14.
+- GPIO12 on physical pin 32 reaches the pattern LED only through 330 ohms.
+- The pattern LED cathode reaches ground on physical pin 30.
 - No GPIO pin connects to 5 V or 12 V.
-- No wire bypasses drain-to-source and leaves the LED permanently grounded.
-- The MOSFET metal tab cannot touch grounded or live metal.
-- LED current does not pass through a breadboard or thin signal jumper.
-- Unused USB data conductors are individually insulated.
-- Camera and DSI ribbons are fully seated and latched.
+- Strip current does not pass through GPIO or thin signal jumpers.
+- Converter and controller polarity matches their manufacturer diagrams.
+- Every power conductor is rated for measured continuous current.
+- Camera and display ribbons are seated and latched.
 - Power cables and ribbons have strain relief.
 
 ## References
 
-- [IRLB8721 manufacturer datasheet](https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlb8721-datasheet-en.pdf)
-- [Raspberry Pi power supply guidance](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#power-supply)
 - [Raspberry Pi GPIO documentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#gpio)
+- [Raspberry Pi power supply guidance](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#power-supply)
