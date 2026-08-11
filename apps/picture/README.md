@@ -12,10 +12,6 @@ conservative for the Pi 3A+'s memory.
 
 ## Default wiring
 
-See [WIRING.md](WIRING.md) for the complete circuit, parts list, MOSFET
-controller wiring, power-budget guidance, assembly procedure, and electrical
-safety checks.
-
 All pin names below are BCM GPIO numbers, not physical header numbers.
 
 - Capture button: GPIO17, physical pin 11, to ground on physical pin 9.
@@ -211,7 +207,7 @@ app:
 - `CAPTURE_BUTTON_PIN=17`
 - `LED_PWM_PIN=18`
 - `LED_PWM_ACTIVE_HIGH=true`
-- `LED_PWM_FREQUENCY=10000` (maximum supported by the `lgpio` backend)
+- `LED_PWM_FREQUENCY=5000`
 - `LED_STRIP_BRIGHTNESS=1.0` (from `0.0` off to `1.0` full brightness)
 - `PATTERN_LED_PIN=12`
 - `PATTERN_LED_ACTIVE_HIGH=true`
