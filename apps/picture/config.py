@@ -77,7 +77,7 @@ def load_config() -> AppConfig:
         led_pwm_output=_int_env("LED_PWM_PIN", 18),
         pattern_led_output=_int_env("PATTERN_LED_PIN", 12),
         led_pwm_active_high=_bool_env("LED_PWM_ACTIVE_HIGH", True),
-        led_pwm_frequency=_float_env("LED_PWM_FREQUENCY", 20_000.0),
+        led_pwm_frequency=_float_env("LED_PWM_FREQUENCY", 10_000.0),
         led_strip_brightness=_float_env("LED_STRIP_BRIGHTNESS", 1.0),
         pattern_led_active_high=_bool_env("PATTERN_LED_ACTIVE_HIGH", True),
         button_bounce_seconds=_float_env("BUTTON_BOUNCE_SECONDS", 0.08),
@@ -139,6 +139,8 @@ def _validate(config: AppConfig) -> None:
         raise ValueError("CAPTURE_HOLD_SECONDS must be positive")
     if config.pins.led_pwm_frequency <= 0:
         raise ValueError("LED_PWM_FREQUENCY must be positive")
+    if config.pins.led_pwm_frequency > 10_000:
+        raise ValueError("LED_PWM_FREQUENCY cannot exceed lgpio's 10000 Hz limit")
     if not 0.0 <= config.pins.led_strip_brightness <= 1.0:
         raise ValueError("LED_STRIP_BRIGHTNESS must be between 0.0 and 1.0")
 

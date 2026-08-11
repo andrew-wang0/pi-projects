@@ -153,7 +153,7 @@ The software defaults are:
 ```text
 LED_PWM_PIN=18
 LED_PWM_ACTIVE_HIGH=true
-LED_PWM_FREQUENCY=20000
+LED_PWM_FREQUENCY=10000
 LED_STRIP_BRIGHTNESS=1.0
 ```
 
@@ -165,9 +165,10 @@ during clean app shutdown.
 
 If the controller input is active-low, set `LED_PWM_ACTIVE_HIGH=false`.
 Only change the PWM frequency after checking the controller's supported range.
-A frequency that is too low can produce camera banding or visible flicker; a
-frequency outside the controller's range can cause incorrect switching or
-heating.
+A frequency that is too low can produce camera banding or visible flicker.
+The app's `lgpio` backend supports no more than 10000 Hz; the controller may
+have a lower limit. A frequency outside either range can prevent startup,
+cause incorrect switching, or cause heating.
 
 ## Controller power and load path
 
