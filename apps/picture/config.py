@@ -77,7 +77,7 @@ def load_config() -> AppConfig:
         led_pwm_output=_int_env("LED_PWM_PIN", 18),
         pattern_led_output=_int_env("PATTERN_LED_PIN", 12),
         led_pwm_active_high=_bool_env("LED_PWM_ACTIVE_HIGH", True),
-        led_pwm_frequency=_float_env("LED_PWM_FREQUENCY", 2_000.0),
+        led_pwm_frequency=_float_env("LED_PWM_FREQUENCY", 1_000.0),
         led_strip_brightness=_float_env("LED_STRIP_BRIGHTNESS", 1.0),
         pattern_led_active_high=_bool_env("PATTERN_LED_ACTIVE_HIGH", True),
         button_bounce_seconds=_float_env("BUTTON_BOUNCE_SECONDS", 0.08),
