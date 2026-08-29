@@ -52,6 +52,7 @@ def main() -> None:
             display,
             controls,
             signal_led,
+            show_light,
             events,
             stop_event,
             config.image_dir,

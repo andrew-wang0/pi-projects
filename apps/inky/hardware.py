@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from enum import Enum, auto
+import math
 import threading
 import time
 
@@ -114,6 +115,9 @@ class ShowLight:
         )
 
         self._transition_id = 0
+        self._busy = False
+        self._restore_transition = config.light_transition_seconds
+        self._default_transition = config.light_transition_seconds
 
     def set(
         self,
@@ -124,19 +128,23 @@ class ShowLight:
     ) -> None:
         if transition < 0:
             raise ValueError("Transition cannot be negative")
+        if brightness is not None and not 0.0 <= brightness <= 1.0:
+            raise ValueError("Brightness must be between 0.0 and 1.0")
 
         with self._lock:
-            self._transition_id += 1
-            transition_id = self._transition_id
-            start = self._output.value
             if brightness is not None:
-                if not 0.0 <= brightness <= 1.0:
-                    raise ValueError("Brightness must be between 0.0 and 1.0")
                 self._brightness = brightness
                 if on is None:
                     self._on = brightness > 0
             if on is not None:
                 self._on = on
+            if self._busy:
+                self._restore_transition = transition
+                return
+
+            self._transition_id += 1
+            transition_id = self._transition_id
+            start = self._output.value
             target = self._physical_level()
             if transition == 0:
                 self._output.value = target
@@ -147,6 +155,54 @@ class ShowLight:
             args=(transition_id, start, target, transition),
             daemon=True,
         ).start()
+
+    def start_busy(self) -> None:
+        with self._lock:
+            if self._busy:
+                return
+            self._busy = True
+            self._restore_transition = self._default_transition
+            self._transition_id += 1
+            transition_id = self._transition_id
+            self._output.value = self._minimum_duty
+
+        threading.Thread(
+            target=self._breathe,
+            args=(transition_id,),
+            daemon=True,
+        ).start()
+
+    def stop_busy(self) -> None:
+        with self._lock:
+            if not self._busy:
+                return
+            self._busy = False
+            transition = self._restore_transition
+            self._transition_id += 1
+            transition_id = self._transition_id
+            start = self._output.value
+            target = self._physical_level()
+            if transition == 0:
+                self._output.value = target
+                return
+
+        threading.Thread(
+            target=self._fade,
+            args=(transition_id, start, target, transition),
+            daemon=True,
+        ).start()
+
+    def _breathe(self, transition_id: int) -> None:
+        started = time.monotonic()
+        while True:
+            phase = (time.monotonic() - started) % 2.0 / 2.0
+            wave = (1.0 - math.cos(2.0 * math.pi * phase)) / 2.0
+            level = self._minimum_duty + wave * (1.0 - self._minimum_duty)
+            with self._lock:
+                if not self._busy or transition_id != self._transition_id:
+                    return
+                self._output.value = level
+            time.sleep(0.02)
 
     def _fade(
         self,
@@ -176,7 +232,11 @@ class ShowLight:
             return self._on, self._brightness
 
     def close(self) -> None:
-        self.set(on=False)
+        with self._lock:
+            self._busy = False
+            self._transition_id += 1
+            self._on = False
+            self._output.value = 0.0
         self._output.close()
 
 

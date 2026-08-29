@@ -11,7 +11,7 @@ from PIL import Image
 
 from camera import Camera
 from display import InkyDisplay
-from hardware import ButtonEvent, CaptureButton, SignalLed
+from hardware import ButtonEvent, CaptureButton, ShowLight, SignalLed
 
 
 LOGGER = logging.getLogger(__name__)
@@ -24,6 +24,7 @@ class InkyApp:
         display: InkyDisplay,
         controls: CaptureButton,
         signal_led: SignalLed,
+        show_light: ShowLight,
         events: SimpleQueue[ButtonEvent],
         stop_event: threading.Event,
         image_dir: Path,
@@ -33,6 +34,7 @@ class InkyApp:
         self._display = display
         self._controls = controls
         self._signal_led = signal_led
+        self._show_light = show_light
         self._events = events
         self._stop_event = stop_event
         self._image_dir = image_dir
@@ -76,17 +78,21 @@ class InkyApp:
                 except Exception:
                     LOGGER.exception("Camera stop failed")
 
-            prepared = self._display.prepare(image)
+            self._show_light.start_busy()
             try:
-                path = self._store(prepared)
-            except Exception:
-                LOGGER.exception("Image storage failed")
-            else:
+                prepared = self._display.prepare(image)
                 try:
-                    self._on_photo(path)
+                    path = self._store(prepared)
                 except Exception:
-                    LOGGER.exception("Home Assistant photo publication failed")
-            self._display.show(prepared)
+                    LOGGER.exception("Image storage failed")
+                else:
+                    try:
+                        self._on_photo(path)
+                    except Exception:
+                        LOGGER.exception("Home Assistant photo publication failed")
+                self._display.show(prepared)
+            finally:
+                self._show_light.stop_busy()
         except Exception:
             LOGGER.exception("Inky image preparation or display update failed")
         finally:
