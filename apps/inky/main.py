@@ -60,6 +60,7 @@ def main() -> None:
             display,
             controls,
             signal_led,
+            show_light,
             events,
             display_requests,
             stop_event,

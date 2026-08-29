@@ -11,15 +11,17 @@ them.
    LED and the Pimoroni board's shine-through LED.
 2. Releasing the same accepted press captures one photo.
 3. Both signal LEDs turn off as soon as capture completes.
-4. The photo is cropped to 800×480, stored as a PNG, and shown on the display.
+4. The big light breathes from minimum to maximum and back every two seconds
+   while the photo is processed, stored, published, and shown on the display.
+5. The big light returns to its latest Home Assistant setting.
 
 Button activity is ignored from the start of capture through the end of the
 display refresh. A press that begins during this time remains invalid even if
 the button is released after the refresh finishes.
 
-The big show light is independent of capture state. It starts at
-`LIGHT_BRIGHTNESS`, does not react to the button, and can be switched or dimmed
-through Home Assistant.
+The big show light starts at `LIGHT_BRIGHTNESS` and can be switched or dimmed
+through Home Assistant. Its temporary breathing pattern reports processing
+activity after capture without changing its Home Assistant state.
 
 The app has no video, preview, countdown, or graphical-desktop dependency.
 
@@ -74,14 +76,16 @@ sudo journalctl -u inky.service -b --no-pager -n 100
 Install the Mosquitto broker add-on and MQTT integration in Home Assistant,
 then create a broker user for Inky. Put its address and credentials in `.env`;
 this file is ignored by Git. If `MQTT_HOST` is unset, MQTT is disabled and
-local capture continues normally.
+local capture continues normally. Capture and display also continue if the
+broker is unreachable, credentials are wrong, or the MQTT package is missing.
 
 Inky publishes retained MQTT Discovery configurations. Home Assistant creates:
 
 - `light.inky_show_light`, named **Light**, for independent on/off and
   brightness control.
 - `image.inky_latest_photo` for the latest captured 800×480 PNG.
-- `sensor.inky_display_status` for dashboard upload progress and errors.
+- `image.inky_archive_queue`, a diagnostic entity used for reliable historical
+  photo transfer.
 
 The device publishes online/offline availability and its actual light state.
 MQTT light commands remain active while the e-paper display refreshes.
@@ -135,19 +139,41 @@ on the Home Assistant host and add this automation:
 ```yaml
 alias: Archive Inky photos
 triggers:
-  - trigger: state
-    entity_id: image.inky_latest_photo
-    not_from: unavailable
-    not_to:
-      - unknown
-      - unavailable
+  - trigger: mqtt
+    topic: inky/photo/transfer
+conditions:
+  - condition: template
+    value_template: "{{ trigger.payload | length == 64 }}"
+variables:
+  filename: "{{ as_timestamp(now()) | int }}.png"
 actions:
+  - delay: "00:00:01"
   - action: image.snapshot
     target:
-      entity_id: image.inky_latest_photo
+      entity_id: image.inky_archive_queue
     data:
-      filename: "/media/inky/{{ as_timestamp(now()) | int }}.png"
+      filename: "/media/inky/{{ filename }}"
+  - action: mqtt.publish
+    data:
+      topic: inky/photo/ack
+      payload: "{{ trigger.payload }}"
 mode: queued
+```
+
+Every PNG remains on Inky until it is deleted manually. Inky appends capture
+order to `images/.mqtt-photo-queue` and records acknowledged files atomically in
+`images/.mqtt-synced.json`. After MQTT reconnects, it publishes every
+unacknowledged PNG in capture order. It waits for the automation to save and
+acknowledge each image before sending the next. The first run of this backup
+logic publishes all existing PNGs.
+
+To replay the complete local archive again, stop the service, remove the
+cursor, and restart:
+
+```bash
+sudo systemctl stop inky.service
+rm images/.mqtt-synced.json
+sudo systemctl start inky.service
 ```
 
 This archives photos received while MQTT is connected; the complete originals
