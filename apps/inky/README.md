@@ -1,9 +1,7 @@
 # Inky
 
 `inky` takes still photos with a Raspberry Pi Camera Module and displays them
-on an Inky Impression 7.3 Spectra (800×480). A Home Assistant dashboard card
-can also upload, caption, draw on, and add stickers to images before displaying
-them.
+on an Inky Impression 7.3 Spectra (800×480).
 
 ## Behavior
 
@@ -84,33 +82,9 @@ Inky publishes retained MQTT Discovery configurations. Home Assistant creates:
 - `light.inky_show_light`, named **Light**, for independent on/off and
   brightness control.
 - `image.inky_latest_photo` for the latest captured 800×480 PNG.
-- `image.inky_archive_queue`, a diagnostic entity used for reliable historical
-  photo transfer.
 
 The device publishes online/offline availability and its actual light state.
 MQTT light commands remain active while the e-paper display refreshes.
-
-### Dashboard editor
-
-The dependency-free custom card in [`dashboard/`](dashboard/) provides the
-800×480 photo editor. Copy `dashboard/inky-card.js` to
-`/config/www/inky/inky-card.js` on Home Assistant, register
-`/local/inky/inky-card.js` as a JavaScript module dashboard resource, and add:
-
-```yaml
-type: custom:inky-card
-```
-
-See [`dashboard/README.md`](dashboard/README.md) for complete installation and
-configuration instructions.
-
-The card sends a versioned JSON command to `inky/display/set`. The image is a
-base64 JPEG composed in the browser. Inky validates the command, keeps at most
-one waiting remote image, serializes it with camera and e-paper access, stores
-the prepared PNG in `images/`, displays it, and publishes progress to
-`inky/display/status`. If another upload arrives while one is already waiting,
-the new request receives an error so that no dashboard silently loses its
-upload.
 
 Light commands fade over one second by default, including ordinary dashboard
 toggle and brightness changes. Home Assistant can override that duration per
@@ -133,53 +107,40 @@ linearly to 100% duty at 100% brightness. Off remains 0%. Change
 `LIGHT_MINIMUM_DUTY` if the hardware needs a different lower bound.
 
 Home Assistant does not retain previous MQTT image payloads automatically. To
-copy each received capture into its local media directory, create `/media/inky`
-on the Home Assistant host and add this automation:
+save each new camera capture into local media and notify your phone, create
+`/media/inky` on the Home Assistant host and add this automation:
 
 ```yaml
-alias: Archive Inky photos
+alias: Archive and notify Inky photos
 triggers:
   - trigger: mqtt
-    topic: inky/photo/transfer
-conditions:
-  - condition: template
-    value_template: "{{ trigger.payload | length == 64 }}"
+    topic: inky/photo/captured
 variables:
-  filename: "{{ as_timestamp(now()) | int }}.png"
+  filename: "{{ trigger.payload }}"
 actions:
   - delay: "00:00:01"
   - action: image.snapshot
     target:
-      entity_id: image.inky_archive_queue
+      entity_id: image.inky_latest_photo
     data:
       filename: "/media/inky/{{ filename }}"
-  - action: mqtt.publish
+  - action: notify.mobile_app_andrews_iphone
     data:
-      topic: inky/photo/ack
-      payload: "{{ trigger.payload }}"
+      title: "New Inky photo"
+      message: "A new photo was captured."
+      data:
+        image: "/media/local/inky/{{ filename }}"
 mode: queued
 ```
 
-Every PNG remains on Inky until it is deleted manually. Inky appends capture
-order to `images/.mqtt-photo-queue` and records acknowledged files atomically in
-`images/.mqtt-synced.json`. After MQTT reconnects, it publishes every
-unacknowledged PNG in capture order. It waits for the automation to save and
-acknowledge each image before sending the next. The first run of this backup
-logic publishes all existing PNGs.
+`inky/photo/captured` is published only for live camera captures (not for
+reconnect republishes of the latest photo). The payload is the PNG filename
+already stored on Inky, and the same `filename` variable is used for both the
+media archive and the notification attachment.
 
-To replay the complete local archive again, stop the service, remove the
-cursor, and restart:
-
-```bash
-sudo systemctl stop inky.service
-rm images/.mqtt-synced.json
-sudo systemctl start inky.service
-```
-
-This archives photos received while MQTT is connected; the complete originals
-always remain in Inky's local `images/` directory. The Home Assistant copies
-appear under **Media → Local Media → inky**. For a gallery directly on a
-dashboard, install Media Explorer Card through HACS and use:
+Archived copies appear under **Media → Local Media → inky**. The complete
+originals always remain in Inky's local `images/` directory. For a gallery
+directly on a dashboard, install Media Explorer Card through HACS and use:
 
 ```yaml
 type: custom:media-explorer-card
@@ -232,4 +193,3 @@ and blocks until the refresh is complete.
 - `MQTT_DEVICE_ID=inky`
 - `MQTT_TOPIC_PREFIX=inky`
 - `MQTT_DISCOVERY_PREFIX=homeassistant`
-- `MQTT_DISPLAY_MAX_BYTES=2000000`

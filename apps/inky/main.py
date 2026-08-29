@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from queue import Full, Queue, SimpleQueue
+from queue import SimpleQueue
 import signal
 import threading
 
@@ -10,7 +10,6 @@ from app import InkyApp
 from camera import Camera
 from config import load_config
 from display import InkyDisplay
-from display_command import DisplayRequest
 from hardware import ButtonEvent, CaptureButton, ShowLight, SignalLed, use_lgpio
 from home_assistant import HomeAssistant
 
@@ -27,13 +26,6 @@ def main() -> None:
     config.image_dir.mkdir(parents=True, exist_ok=True)
     stop_event = threading.Event()
     events: SimpleQueue[ButtonEvent] = SimpleQueue()
-    display_requests: Queue[DisplayRequest] = Queue(maxsize=1)
-
-    def enqueue_display(request: DisplayRequest) -> None:
-        try:
-            display_requests.put_nowait(request)
-        except Full as error:
-            raise RuntimeError("another image is already waiting") from error
 
     def stop(_signum=None, _frame=None) -> None:
         stop_event.set()
@@ -53,7 +45,7 @@ def main() -> None:
         signal_led = SignalLed(config)
         controls = CaptureButton(config, events.put)
         camera = Camera(config)
-        home_assistant = HomeAssistant(config, show_light, enqueue_display)
+        home_assistant = HomeAssistant(config, show_light)
         home_assistant.start()
         InkyApp(
             camera,
@@ -62,11 +54,9 @@ def main() -> None:
             signal_led,
             show_light,
             events,
-            display_requests,
             stop_event,
             config.image_dir,
             home_assistant.publish_photo,
-            home_assistant.publish_display_status,
         ).run()
     finally:
         for resource in (

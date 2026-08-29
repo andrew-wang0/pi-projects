@@ -41,7 +41,6 @@ class MqttConfig:
     device_id: str
     topic_prefix: str
     discovery_prefix: str
-    display_max_bytes: int
 
 
 @dataclass(frozen=True)
@@ -96,7 +95,6 @@ def load_config() -> Config:
                 "MQTT_DISCOVERY_PREFIX",
                 "homeassistant",
             ).rstrip("/"),
-            display_max_bytes=_integer("MQTT_DISPLAY_MAX_BYTES", 2_000_000),
         ),
     )
 
@@ -135,8 +133,6 @@ def load_config() -> Config:
         raise ValueError("MQTT_PORT must be between 1 and 65535")
     if not config.mqtt.device_id.replace("-", "").replace("_", "").isalnum():
         raise ValueError("MQTT_DEVICE_ID may contain letters, numbers, - and _")
-    if not 1_024 <= config.mqtt.display_max_bytes <= 10_000_000:
-        raise ValueError("MQTT_DISPLAY_MAX_BYTES must be from 1024 to 10000000")
     if not config.mqtt.topic_prefix or not config.mqtt.discovery_prefix:
         raise ValueError("MQTT topic prefixes cannot be empty")
     if any(
