@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import datetime, timezone
 import json
 import logging
 from pathlib import Path
+import threading
 
 import paho.mqtt.client as mqtt
 
 from config import Config, MqttConfig
+from display_command import DisplayRequest, parse_display_request
 from hardware import ShowLight
 
 
@@ -14,12 +18,20 @@ LOGGER = logging.getLogger(__name__)
 
 
 class HomeAssistant:
-    def __init__(self, config: Config, light: ShowLight) -> None:
+    def __init__(
+        self,
+        config: Config,
+        light: ShowLight,
+        on_display: Callable[[DisplayRequest], None],
+    ) -> None:
         self._config = config
         self._mqtt: MqttConfig = config.mqtt
         self._light = light
+        self._on_display = on_display
         self._connected = False
         self._client: mqtt.Client | None = None
+        self._display_status_lock = threading.Lock()
+        self._display_status: dict[str, str] = {"state": "idle"}
 
         if not self._mqtt.host:
             return
@@ -87,9 +99,11 @@ class HomeAssistant:
 
         self._connected = True
         client.subscribe(self._topic("light/set"), qos=1)
+        client.subscribe(self._topic("display/set"), qos=1)
         self._publish_discovery()
         client.publish(self._topic("status"), "online", qos=1, retain=True)
         self._publish_light_state()
+        self._publish_display_status()
         self._publish_latest_photo()
         LOGGER.info("Connected to Home Assistant MQTT at %s", self._mqtt.host)
 
@@ -106,11 +120,14 @@ class HomeAssistant:
             LOGGER.warning("MQTT disconnected: %s", reason_code)
 
     def _on_message(self, _client, _userdata, message) -> None:
-        if message.topic != self._topic("light/set"):
-            return
+        if message.topic == self._topic("light/set"):
+            self._handle_light_command(message.payload)
+        elif message.topic == self._topic("display/set"):
+            self._handle_display_command(message.payload)
 
+    def _handle_light_command(self, payload: bytes) -> None:
         try:
-            command = json.loads(message.payload)
+            command = json.loads(payload)
             if not isinstance(command, dict):
                 raise ValueError("command must be a JSON object")
             state = command.get("state")
@@ -134,6 +151,18 @@ class HomeAssistant:
             self._publish_light_state()
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             LOGGER.warning("Ignored invalid MQTT light command: %s", error)
+
+    def _handle_display_command(self, payload: bytes) -> None:
+        try:
+            request = parse_display_request(payload, self._mqtt.display_max_bytes)
+            self.publish_display_status("queued", request.request_id)
+            self._on_display(request)
+        except ValueError as error:
+            LOGGER.warning("Ignored invalid MQTT display command: %s", error)
+            self.publish_display_status("error", message=str(error))
+        except Exception as error:
+            LOGGER.exception("Could not queue MQTT display command")
+            self.publish_display_status("error", message=str(error))
 
     def _publish_discovery(self) -> None:
         assert self._client is not None
@@ -170,8 +199,20 @@ class HomeAssistant:
             "device": device,
             **availability,
         }
+        display_status = {
+            "name": "Display Status",
+            "default_entity_id": f"sensor.{self._mqtt.device_id}_display_status",
+            "unique_id": f"{self._mqtt.device_id}_display_status",
+            "state_topic": self._topic("display/status"),
+            "value_template": "{{ value_json.state }}",
+            "json_attributes_topic": self._topic("display/status"),
+            "device": device,
+            "entity_category": "diagnostic",
+            **availability,
+        }
         self._publish_config("light", "show_light", light)
         self._publish_config("image", "latest_photo", image)
+        self._publish_config("sensor", "display_status", display_status)
         legacy_sensor = (
             f"{self._mqtt.discovery_prefix}/sensor/"
             f"{self._mqtt.device_id}/last_photo/config"
@@ -199,6 +240,36 @@ class HomeAssistant:
         self._client.publish(
             self._topic("light/state"),
             json.dumps(payload),
+            qos=1,
+            retain=True,
+        )
+
+    def publish_display_status(
+        self,
+        state: str,
+        request_id: str | None = None,
+        message: str | None = None,
+    ) -> None:
+        status = {
+            "state": state,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if request_id is not None:
+            status["request_id"] = request_id
+        if message is not None:
+            status["message"] = message[:256]
+        with self._display_status_lock:
+            self._display_status = status
+        self._publish_display_status()
+
+    def _publish_display_status(self) -> None:
+        if self._client is None or not self._connected:
+            return
+        with self._display_status_lock:
+            payload = json.dumps(self._display_status)
+        self._client.publish(
+            self._topic("display/status"),
+            payload,
             qos=1,
             retain=True,
         )

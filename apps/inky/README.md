@@ -1,7 +1,9 @@
 # Inky
 
 `inky` takes still photos with a Raspberry Pi Camera Module and displays them
-on an Inky Impression 7.3 Spectra (800×480).
+on an Inky Impression 7.3 Spectra (800×480). A Home Assistant dashboard card
+can also upload, caption, draw on, and add stickers to images before displaying
+them.
 
 ## Behavior
 
@@ -79,9 +81,31 @@ Inky publishes retained MQTT Discovery configurations. Home Assistant creates:
 - `light.inky_show_light`, named **Light**, for independent on/off and
   brightness control.
 - `image.inky_latest_photo` for the latest captured 800×480 PNG.
+- `sensor.inky_display_status` for dashboard upload progress and errors.
 
 The device publishes online/offline availability and its actual light state.
 MQTT light commands remain active while the e-paper display refreshes.
+
+### Dashboard editor
+
+The dependency-free custom card in [`dashboard/`](dashboard/) provides the
+800×480 photo editor. Copy `dashboard/inky-card.js` to
+`/config/www/inky/inky-card.js` on Home Assistant, register
+`/local/inky/inky-card.js` as a JavaScript module dashboard resource, and add:
+
+```yaml
+type: custom:inky-card
+```
+
+See [`dashboard/README.md`](dashboard/README.md) for complete installation and
+configuration instructions.
+
+The card sends a versioned JSON command to `inky/display/set`. The image is a
+base64 JPEG composed in the browser. Inky validates the command, keeps at most
+one waiting remote image, serializes it with camera and e-paper access, stores
+the prepared PNG in `images/`, displays it, and publishes progress to
+`inky/display/status`. If another upload arrives while one is waiting, the
+newest upload replaces the waiting one.
 
 Light commands fade over one second by default, including ordinary dashboard
 toggle and brightness changes. Home Assistant can override that duration per
@@ -181,3 +205,4 @@ and blocks until the refresh is complete.
 - `MQTT_DEVICE_ID=inky`
 - `MQTT_TOPIC_PREFIX=inky`
 - `MQTT_DISCOVERY_PREFIX=homeassistant`
+- `MQTT_DISPLAY_MAX_BYTES=2000000`
