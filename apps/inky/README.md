@@ -5,12 +5,13 @@ on an Inky Impression 7.3 Spectra (800×480).
 
 ## Behavior
 
-1. Pressing the capture button turns on both signal LEDs: the separately wired
-   LED and the Pimoroni board's shine-through LED.
+1. Pressing the capture button turns on both signal LEDs and forces the big
+   show light to 100% brightness (even if it was off).
 2. Releasing the same accepted press captures one photo.
 3. Both signal LEDs turn off as soon as capture completes.
-4. The big light breathes from minimum to maximum and back every two seconds
-   while the photo is processed, stored, published, and shown on the display.
+4. The big light then breathes from minimum to maximum and back every two
+   seconds while the photo is processed, stored, published, and shown on the
+   display.
 5. The big light returns to its latest Home Assistant setting.
 
 Button activity is ignored from the start of capture through the end of the
@@ -18,8 +19,8 @@ display refresh. A press that begins during this time remains invalid even if
 the button is released after the refresh finishes.
 
 The big show light starts at `LIGHT_BRIGHTNESS` and can be switched or dimmed
-through Home Assistant. Its temporary breathing pattern reports processing
-activity after capture without changing its Home Assistant state.
+through Home Assistant. Capture illumination and the temporary breathing
+pattern do not change its Home Assistant state.
 
 The app has no video, preview, countdown, or graphical-desktop dependency.
 
@@ -130,7 +131,7 @@ actions:
       message: "A new photo was captured."
       data:
         image: "/media/local/inky/{{ filename }}"
-        url: "entityId:image.inky_latest_photo"
+        entity_id: image.inky_latest_photo
 mode: queued
 ```
 
@@ -139,10 +140,11 @@ reconnect republishes of the latest photo). The payload is the PNG filename
 already stored on Inky, and the same `filename` variable is used for both the
 media archive and the notification attachment.
 
-Tapping the iPhone notification opens the more-info panel for
-`image.inky_latest_photo` in the Companion App. To open a dashboard view
-instead, replace `url` with that view's path (for example `/lovelace/inky` —
-use the path shown in the browser address bar after `/`).
+On iPhone, tapping the notification opens the more-info panel for
+`image.inky_latest_photo` via Companion's `entity_id` field (do not use
+`url: entityId:...` — that is Android-only). To open a dashboard view instead,
+omit `entity_id` and set `url` to that view's path (for example
+`/lovelace/inky`).
 
 Archived copies appear under **Media → Local Media → inky**. The complete
 originals always remain in Inky's local `images/` directory. For a gallery

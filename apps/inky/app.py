@@ -54,11 +54,13 @@ class InkyApp:
 
     def _prepare_capture(self) -> None:
         self._signal_led.on()
+        self._show_light.start_capture()
         try:
             self._camera.start()
         except Exception:
             LOGGER.exception("Camera start failed")
             self._signal_led.off()
+            self._show_light.stop_capture()
             self._controls.set_enabled(False)
             self._discard_events()
             self._controls.set_enabled(True)
@@ -70,6 +72,7 @@ class InkyApp:
                 image = self._camera.capture()
             except Exception:
                 LOGGER.exception("Photo capture failed")
+                self._show_light.stop_capture()
                 return
             finally:
                 self._signal_led.off()
@@ -95,6 +98,7 @@ class InkyApp:
                 self._show_light.stop_busy()
         except Exception:
             LOGGER.exception("Inky image preparation or display update failed")
+            self._show_light.stop_capture()
         finally:
             self._discard_events()
             self._controls.set_enabled(True)

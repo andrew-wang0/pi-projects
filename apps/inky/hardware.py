@@ -116,6 +116,7 @@ class ShowLight:
 
         self._transition_id = 0
         self._busy = False
+        self._capture = False
         self._restore_transition = config.light_transition_seconds
         self._default_transition = config.light_transition_seconds
 
@@ -138,10 +139,39 @@ class ShowLight:
                     self._on = brightness > 0
             if on is not None:
                 self._on = on
-            if self._busy:
+            if self._busy or self._capture:
                 self._restore_transition = transition
                 return
 
+            self._transition_id += 1
+            transition_id = self._transition_id
+            start = self._output.value
+            target = self._physical_level()
+            if transition == 0:
+                self._output.value = target
+                return
+
+        threading.Thread(
+            target=self._fade,
+            args=(transition_id, start, target, transition),
+            daemon=True,
+        ).start()
+
+    def start_capture(self) -> None:
+        with self._lock:
+            if self._capture:
+                return
+            self._capture = True
+            self._transition_id += 1
+            self._output.value = 1.0
+
+    def stop_capture(self) -> None:
+        with self._lock:
+            if not self._capture or self._busy:
+                self._capture = False
+                return
+            self._capture = False
+            transition = self._restore_transition
             self._transition_id += 1
             transition_id = self._transition_id
             start = self._output.value
@@ -160,6 +190,7 @@ class ShowLight:
         with self._lock:
             if self._busy:
                 return
+            self._capture = False
             self._busy = True
             self._restore_transition = self._default_transition
             self._transition_id += 1
@@ -234,6 +265,7 @@ class ShowLight:
     def close(self) -> None:
         with self._lock:
             self._busy = False
+            self._capture = False
             self._transition_id += 1
             self._on = False
             self._output.value = 0.0
