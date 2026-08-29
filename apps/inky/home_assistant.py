@@ -205,8 +205,11 @@ class HomeAssistant:
 
     def _publish_latest_photo(self) -> None:
         try:
-            latest = max(self._config.image_dir.glob("inky_*.png"))
-        except ValueError:
+            latest = max(
+                self._config.image_dir.glob("*.png"),
+                key=lambda path: path.stat().st_mtime_ns,
+            )
+        except (OSError, ValueError):
             return
         self._publish_photo_payload(latest)
 

@@ -5,8 +5,9 @@ import os
 from pathlib import Path
 
 
-INKY_DISPLAY_PINS = {2, 3, 8, 9, 10, 11, 12, 17, 22, 27}
+INKY_DISPLAY_PINS = {2, 3, 8, 9, 10, 11, 17, 22, 27}
 INKY_BUTTON_PINS = {5, 6, 16, 24}
+INKY_LED_PIN = 13
 
 
 def _integer(name: str, default: int) -> int:
@@ -65,7 +66,7 @@ def load_config() -> Config:
     config = Config(
         image_dir=Path(os.getenv("INKY_IMAGE_DIR", app_dir / "images")).expanduser(),
         capture_button_pin=_integer("CAPTURE_BUTTON_PIN", 24),
-        signal_led_pin=_integer("SIGNAL_LED_PIN", 13),
+        signal_led_pin=_integer("SIGNAL_LED_PIN", 12),
         signal_led_active_high=_boolean("SIGNAL_LED_ACTIVE_HIGH", True),
         light_pwm_pin=_integer("LIGHT_PWM_PIN", 18),
         light_active_high=_boolean("LIGHT_ACTIVE_HIGH", True),
@@ -97,9 +98,13 @@ def load_config() -> Config:
         config.capture_button_pin,
         config.signal_led_pin,
         config.light_pwm_pin,
+        INKY_LED_PIN,
     }
-    if len(pins) != 3:
-        raise ValueError("The button, signal LED, and show light need different pins")
+    if len(pins) != 4:
+        raise ValueError(
+            "The button, external signal LED, Pimoroni LED, and show light "
+            "need different pins"
+        )
     if any(pin < 0 or pin > 27 for pin in pins):
         raise ValueError("GPIO pins must be BCM numbers from 0 through 27")
     if pins & INKY_DISPLAY_PINS:

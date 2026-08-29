@@ -7,7 +7,7 @@ import threading
 from gpiozero import Button, Device, DigitalOutputDevice, PWMOutputDevice
 from gpiozero.pins.lgpio import LGPIOFactory
 
-from config import Config
+from config import Config, INKY_LED_PIN
 
 
 class ButtonEvent(Enum):
@@ -69,21 +69,34 @@ class CaptureButton:
 
 class SignalLed:
     def __init__(self, config: Config) -> None:
-        self._output = DigitalOutputDevice(
+        external = DigitalOutputDevice(
             config.signal_led_pin,
             active_high=config.signal_led_active_high,
             initial_value=False,
         )
+        try:
+            onboard = DigitalOutputDevice(
+                INKY_LED_PIN,
+                active_high=True,
+                initial_value=False,
+            )
+        except Exception:
+            external.close()
+            raise
+        self._outputs = (external, onboard)
 
     def on(self) -> None:
-        self._output.on()
+        for output in self._outputs:
+            output.on()
 
     def off(self) -> None:
-        self._output.off()
+        for output in self._outputs:
+            output.off()
 
     def close(self) -> None:
         self.off()
-        self._output.close()
+        for output in self._outputs:
+            output.close()
 
 
 class ShowLight:

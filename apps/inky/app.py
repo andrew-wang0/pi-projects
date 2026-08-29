@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime
 import logging
 from pathlib import Path
 from queue import Empty, SimpleQueue
 import threading
+import time
 
 from PIL import Image
 
@@ -101,8 +101,7 @@ class InkyApp:
                 return
 
     def _store(self, image: Image.Image) -> Path:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        path = self._image_dir / f"inky_{timestamp}.png"
+        path = self._image_dir / f"{int(time.time())}.png"
         image.save(path, format="PNG")
         LOGGER.info("Stored %s", path)
         return path
