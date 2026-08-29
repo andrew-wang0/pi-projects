@@ -120,7 +120,12 @@ class HomeAssistant:
 
             value = command.get("brightness")
             brightness = None if value is None else float(value) / 255
-            transition = float(command.get("transition", 0))
+            transition = float(
+                command.get(
+                    "transition",
+                    self._config.light_transition_seconds,
+                )
+            )
             self._light.set(
                 on=on,
                 brightness=brightness,

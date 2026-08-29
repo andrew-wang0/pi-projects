@@ -83,8 +83,9 @@ Inky publishes retained MQTT Discovery configurations. Home Assistant creates:
 The device publishes online/offline availability and its actual light state.
 MQTT light commands remain active while the e-paper display refreshes.
 
-Light changes are instant unless Home Assistant sends a transition duration.
-For example, this action fades the big LED to 70% over two seconds:
+Light commands fade over one second by default, including ordinary dashboard
+toggle and brightness changes. Home Assistant can override that duration per
+command. For example, this action fades the big LED to 70% over two seconds:
 
 ```yaml
 action: light.turn_on
@@ -166,6 +167,7 @@ and blocks until the refresh is complete.
 - `LIGHT_BRIGHTNESS=1.0`
 - `LIGHT_PWM_FREQUENCY=1000`
 - `LIGHT_MINIMUM_DUTY=0.25`
+- `LIGHT_TRANSITION_SECONDS=1.0`
 - `BUTTON_BOUNCE_SECONDS=0.08`
 - `CAMERA_WIDTH=2304`
 - `CAMERA_HEIGHT=1296`
