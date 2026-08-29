@@ -79,7 +79,7 @@ broker is unreachable, credentials are wrong, or the MQTT package is missing.
 
 Inky publishes retained MQTT Discovery configurations. Home Assistant creates:
 
-- `light.inky_show_light`, named **Light**, for independent on/off and
+- `light.inky_show_light`, named **Inky Light**, for independent on/off and
   brightness control.
 - `image.inky_latest_photo` for the latest captured 800×480 PNG.
 
@@ -130,6 +130,7 @@ actions:
       message: "A new photo was captured."
       data:
         image: "/media/local/inky/{{ filename }}"
+        url: "entityId:image.inky_latest_photo"
 mode: queued
 ```
 
@@ -137,6 +138,11 @@ mode: queued
 reconnect republishes of the latest photo). The payload is the PNG filename
 already stored on Inky, and the same `filename` variable is used for both the
 media archive and the notification attachment.
+
+Tapping the iPhone notification opens the more-info panel for
+`image.inky_latest_photo` in the Companion App. To open a dashboard view
+instead, replace `url` with that view's path (for example `/lovelace/inky` —
+use the path shown in the browser address bar after `/`).
 
 Archived copies appear under **Media → Local Media → inky**. The complete
 originals always remain in Inky's local `images/` directory. For a gallery

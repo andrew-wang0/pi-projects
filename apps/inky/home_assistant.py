@@ -185,7 +185,7 @@ class HomeAssistant:
             "payload_not_available": "offline",
         }
         light = {
-            "name": "Light",
+            "name": "Inky Light",
             "default_entity_id": f"light.{self._mqtt.device_id}_show_light",
             "unique_id": f"{self._mqtt.device_id}_show_light",
             "schema": "json",
