@@ -11,8 +11,8 @@ fi
 
 sudo apt-get update
 sudo apt-get install -y \
-  python3-gpiod \
   python3-gpiozero \
+  python3-libgpiod \
   python3-lgpio \
   python3-numpy \
   python3-picamera2 \
