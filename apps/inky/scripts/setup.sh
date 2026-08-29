@@ -37,8 +37,8 @@ for setting in dtoverlay=i2c1 dtoverlay=i2c1-pi5 dtoverlay=spi0-0cs; do
 done
 
 python3 -m venv --system-site-packages "$APP_DIR/.venv"
-"$APP_DIR/.venv/bin/python" -m pip install --upgrade inky
+"$APP_DIR/.venv/bin/python" -m pip install --upgrade inky paho-mqtt
 "$APP_DIR/.venv/bin/python" -c \
-  "import gpiozero, inky, lgpio, picamera2, PIL; print('Inky dependencies are ready.')"
+  "import gpiozero, inky, lgpio, paho.mqtt.client, picamera2, PIL; print('Inky dependencies are ready.')"
 
 echo "Setup complete. Reboot before starting the app."

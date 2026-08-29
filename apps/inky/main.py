@@ -11,6 +11,7 @@ from camera import Camera
 from config import load_config
 from display import InkyDisplay
 from hardware import ButtonEvent, CaptureButton, ShowLight, SignalLed, use_lgpio
+from home_assistant import HomeAssistant
 
 
 LOGGER = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ def main() -> None:
     camera = None
     show_light = None
     signal_led = None
+    home_assistant = None
     try:
         use_lgpio()
         display = InkyDisplay(config)
@@ -43,6 +45,8 @@ def main() -> None:
         signal_led = SignalLed(config)
         controls = CaptureButton(config, events.put)
         camera = Camera(config)
+        home_assistant = HomeAssistant(config, show_light)
+        home_assistant.start()
         InkyApp(
             camera,
             display,
@@ -51,9 +55,16 @@ def main() -> None:
             events,
             stop_event,
             config.image_dir,
+            home_assistant.publish_photo,
         ).run()
     finally:
-        for resource in (controls, camera, signal_led, show_light):
+        for resource in (
+            controls,
+            camera,
+            signal_led,
+            home_assistant,
+            show_light,
+        ):
             if resource is not None:
                 try:
                     resource.close()

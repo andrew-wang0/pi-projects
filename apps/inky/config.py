@@ -32,6 +32,17 @@ def _boolean(name: str, default: bool) -> bool:
 
 
 @dataclass(frozen=True)
+class MqttConfig:
+    host: str | None
+    port: int
+    username: str | None
+    password: str | None
+    device_id: str
+    topic_prefix: str
+    discovery_prefix: str
+
+
+@dataclass(frozen=True)
 class Config:
     image_dir: Path
     capture_button_pin: int
@@ -46,6 +57,7 @@ class Config:
     camera_hflip: bool
     camera_vflip: bool
     inky_saturation: float
+    mqtt: MqttConfig
 
 
 def load_config() -> Config:
@@ -67,6 +79,18 @@ def load_config() -> Config:
         camera_hflip=_boolean("CAMERA_HFLIP", True),
         camera_vflip=_boolean("CAMERA_VFLIP", False),
         inky_saturation=_number("INKY_SATURATION", 0.5),
+        mqtt=MqttConfig(
+            host=os.getenv("MQTT_HOST"),
+            port=_integer("MQTT_PORT", 1883),
+            username=os.getenv("MQTT_USERNAME"),
+            password=os.getenv("MQTT_PASSWORD"),
+            device_id=os.getenv("MQTT_DEVICE_ID", "inky"),
+            topic_prefix=os.getenv("MQTT_TOPIC_PREFIX", "inky").rstrip("/"),
+            discovery_prefix=os.getenv(
+                "MQTT_DISCOVERY_PREFIX",
+                "homeassistant",
+            ).rstrip("/"),
+        ),
     )
 
     pins = {
@@ -92,5 +116,16 @@ def load_config() -> Config:
         raise ValueError("Camera dimensions must be positive even numbers")
     if not 0.0 <= config.inky_saturation <= 1.0:
         raise ValueError("INKY_SATURATION must be between 0.0 and 1.0")
+    if not 1 <= config.mqtt.port <= 65_535:
+        raise ValueError("MQTT_PORT must be between 1 and 65535")
+    if not config.mqtt.device_id.replace("-", "").replace("_", "").isalnum():
+        raise ValueError("MQTT_DEVICE_ID may contain letters, numbers, - and _")
+    if not config.mqtt.topic_prefix or not config.mqtt.discovery_prefix:
+        raise ValueError("MQTT topic prefixes cannot be empty")
+    if any(
+        char in config.mqtt.topic_prefix + config.mqtt.discovery_prefix
+        for char in "#+"
+    ):
+        raise ValueError("MQTT topic prefixes cannot contain wildcards")
 
     return config

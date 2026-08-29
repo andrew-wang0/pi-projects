@@ -14,8 +14,9 @@ Button activity is ignored from the start of capture through the end of the
 display refresh. A press that begins during this time remains invalid even if
 the button is released after the refresh finishes.
 
-The big show light is independent of capture state. It remains at
-`LIGHT_BRIGHTNESS` while the app runs and does not react to the button.
+The big show light is independent of capture state. It starts at
+`LIGHT_BRIGHTNESS`, does not react to the button, and can be switched or dimmed
+through Home Assistant.
 
 The app has no video, preview, countdown, or graphical-desktop dependency.
 
@@ -41,6 +42,9 @@ the LED load directly to a GPIO pin.
 ```bash
 cd /path/to/pi-projects/apps/inky
 ./scripts/setup.sh
+cp .env.example .env
+# Edit .env with the Home Assistant MQTT broker credentials.
+chmod 600 .env
 sudo reboot
 ./scripts/install-autostart.sh
 ```
@@ -54,6 +58,57 @@ Useful service commands:
 sudo systemctl restart inky.service
 sudo systemctl status inky.service --no-pager --full
 sudo journalctl -u inky.service -b --no-pager -n 100
+```
+
+## Home Assistant
+
+Install the Mosquitto broker add-on and MQTT integration in Home Assistant,
+then create a broker user for Inky. Put its address and credentials in `.env`;
+this file is ignored by Git. If `MQTT_HOST` is unset, MQTT is disabled and
+local capture continues normally.
+
+Inky publishes retained MQTT Discovery configurations. Home Assistant creates:
+
+- `light.inky_show_light` for independent on/off and brightness control.
+- `image.inky_latest_photo` for the latest captured 800×480 PNG.
+- `sensor.inky_last_photo` for the latest photo's filename.
+
+The device publishes online/offline availability and its actual light state.
+MQTT light commands remain active while the e-paper display refreshes.
+
+Home Assistant does not retain previous MQTT image payloads automatically. To
+copy each received capture into its local media directory, create `/media/inky`
+on the Home Assistant host and add this automation:
+
+```yaml
+alias: Archive Inky photos
+triggers:
+  - trigger: state
+    entity_id: sensor.inky_last_photo
+    not_from:
+      - unknown
+      - unavailable
+    not_to:
+      - unknown
+      - unavailable
+actions:
+  - delay: "00:00:01"
+  - action: image.snapshot
+    target:
+      entity_id: image.inky_latest_photo
+    data:
+      filename: "/media/inky/{{ trigger.to_state.state }}"
+mode: queued
+```
+
+This archives photos received while MQTT is connected; the complete originals
+always remain in Inky's local `images/` directory. The Home Assistant copies
+appear under **Media → Local Media → inky**. For a gallery directly on a
+dashboard, install Media Explorer Card through HACS and use:
+
+```yaml
+type: custom:media-explorer-card
+startPath: media-source://media_source/local/inky
 ```
 
 ## Image conversion
@@ -93,3 +148,10 @@ and blocks until the refresh is complete.
 - `CAMERA_HFLIP=true`
 - `CAMERA_VFLIP=false`
 - `INKY_SATURATION=0.5`
+- `MQTT_HOST=homeassistant.local` (unset disables MQTT)
+- `MQTT_PORT=1883`
+- `MQTT_USERNAME=inky`
+- `MQTT_PASSWORD=...`
+- `MQTT_DEVICE_ID=inky`
+- `MQTT_TOPIC_PREFIX=inky`
+- `MQTT_DISCOVERY_PREFIX=homeassistant`

@@ -88,15 +88,34 @@ class SignalLed:
 
 class ShowLight:
     def __init__(self, config: Config) -> None:
+        self._brightness = config.light_brightness
+        self._on = self._brightness > 0
+        self._lock = threading.Lock()
         self._output = PWMOutputDevice(
             config.light_pwm_pin,
             active_high=config.light_active_high,
-            initial_value=config.light_brightness,
+            initial_value=self._brightness,
             frequency=config.light_pwm_frequency,
         )
 
+    def set(self, *, on: bool | None = None, brightness: float | None = None) -> None:
+        with self._lock:
+            if brightness is not None:
+                if not 0.0 <= brightness <= 1.0:
+                    raise ValueError("Brightness must be between 0.0 and 1.0")
+                self._brightness = brightness
+                if on is None:
+                    self._on = brightness > 0
+            if on is not None:
+                self._on = on
+            self._output.value = self._brightness if self._on else 0.0
+
+    def state(self) -> tuple[bool, float]:
+        with self._lock:
+            return self._on, self._brightness
+
     def close(self) -> None:
-        self._output.off()
+        self.set(on=False)
         self._output.close()
 
 

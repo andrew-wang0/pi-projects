@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 import logging
 from pathlib import Path
@@ -26,6 +27,7 @@ class InkyApp:
         events: SimpleQueue[ButtonEvent],
         stop_event: threading.Event,
         image_dir: Path,
+        on_photo: Callable[[Path], None],
     ) -> None:
         self._camera = camera
         self._display = display
@@ -34,6 +36,7 @@ class InkyApp:
         self._events = events
         self._stop_event = stop_event
         self._image_dir = image_dir
+        self._on_photo = on_photo
 
     def run(self) -> None:
         while not self._stop_event.is_set():
@@ -75,9 +78,14 @@ class InkyApp:
 
             prepared = self._display.prepare(image)
             try:
-                self._store(prepared)
+                path = self._store(prepared)
             except Exception:
                 LOGGER.exception("Image storage failed")
+            else:
+                try:
+                    self._on_photo(path)
+                except Exception:
+                    LOGGER.exception("Home Assistant photo publication failed")
             self._display.show(prepared)
         except Exception:
             LOGGER.exception("Inky image preparation or display update failed")
@@ -92,8 +100,9 @@ class InkyApp:
             except Empty:
                 return
 
-    def _store(self, image: Image.Image) -> None:
+    def _store(self, image: Image.Image) -> Path:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         path = self._image_dir / f"inky_{timestamp}.png"
         image.save(path, format="PNG")
         LOGGER.info("Stored %s", path)
+        return path

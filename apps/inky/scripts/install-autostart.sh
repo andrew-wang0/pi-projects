@@ -29,7 +29,8 @@ trap 'rm -f "$UNIT_FILE"' EXIT
 cat > "$UNIT_FILE" << EOF
 [Unit]
 Description=Inky still camera
-After=local-fs.target
+Wants=network-online.target
+After=local-fs.target network-online.target
 StartLimitIntervalSec=0
 
 [Service]
@@ -37,6 +38,7 @@ Type=simple
 User=$(id -un)
 Environment="HOME=$HOME"
 Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=-$APP_DIR/.env
 WorkingDirectory=$APP_DIR
 ExecStart=$APP_DIR/scripts/run.sh
 Restart=on-failure
