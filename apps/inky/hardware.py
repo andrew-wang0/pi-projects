@@ -67,33 +67,37 @@ class CaptureButton:
         self._button.close()
 
 
-class CaptureLights:
+class SignalLed:
     def __init__(self, config: Config) -> None:
-        self._brightness = config.light_brightness
-        self._show_light = PWMOutputDevice(
-            config.light_pwm_pin,
-            active_high=config.light_active_high,
-            initial_value=0.0,
-            frequency=config.light_pwm_frequency,
-        )
-        self._signal_led = DigitalOutputDevice(
+        self._output = DigitalOutputDevice(
             config.signal_led_pin,
             active_high=config.signal_led_active_high,
             initial_value=False,
         )
 
     def on(self) -> None:
-        self._show_light.value = self._brightness
-        self._signal_led.on()
+        self._output.on()
 
     def off(self) -> None:
-        self._show_light.off()
-        self._signal_led.off()
+        self._output.off()
 
     def close(self) -> None:
         self.off()
-        self._show_light.close()
-        self._signal_led.close()
+        self._output.close()
+
+
+class ShowLight:
+    def __init__(self, config: Config) -> None:
+        self._output = PWMOutputDevice(
+            config.light_pwm_pin,
+            active_high=config.light_active_high,
+            initial_value=config.light_brightness,
+            frequency=config.light_pwm_frequency,
+        )
+
+    def close(self) -> None:
+        self._output.off()
+        self._output.close()
 
 
 def use_lgpio() -> None:

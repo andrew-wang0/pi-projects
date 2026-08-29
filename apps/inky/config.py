@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 
-INKY_DISPLAY_PINS = {2, 3, 8, 9, 10, 11, 17, 22, 27}
+INKY_DISPLAY_PINS = {2, 3, 8, 9, 10, 11, 12, 17, 22, 27}
 INKY_BUTTON_PINS = {5, 6, 16, 24}
 
 
@@ -53,7 +53,7 @@ def load_config() -> Config:
     config = Config(
         image_dir=Path(os.getenv("INKY_IMAGE_DIR", app_dir / "images")).expanduser(),
         capture_button_pin=_integer("CAPTURE_BUTTON_PIN", 24),
-        signal_led_pin=_integer("SIGNAL_LED_PIN", 12),
+        signal_led_pin=_integer("SIGNAL_LED_PIN", 13),
         signal_led_active_high=_boolean("SIGNAL_LED_ACTIVE_HIGH", True),
         light_pwm_pin=_integer("LIGHT_PWM_PIN", 18),
         light_active_high=_boolean("LIGHT_ACTIVE_HIGH", True),

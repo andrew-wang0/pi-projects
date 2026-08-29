@@ -10,7 +10,7 @@ from app import InkyApp
 from camera import Camera
 from config import load_config
 from display import InkyDisplay
-from hardware import ButtonEvent, CaptureButton, CaptureLights, use_lgpio
+from hardware import ButtonEvent, CaptureButton, ShowLight, SignalLed, use_lgpio
 
 
 LOGGER = logging.getLogger(__name__)
@@ -34,24 +34,26 @@ def main() -> None:
 
     controls = None
     camera = None
-    light = None
+    show_light = None
+    signal_led = None
     try:
         use_lgpio()
         display = InkyDisplay(config)
-        light = CaptureLights(config)
+        show_light = ShowLight(config)
+        signal_led = SignalLed(config)
         controls = CaptureButton(config, events.put)
         camera = Camera(config)
         InkyApp(
             camera,
             display,
             controls,
-            light,
+            signal_led,
             events,
             stop_event,
             config.image_dir,
         ).run()
     finally:
-        for resource in (controls, camera, light):
+        for resource in (controls, camera, signal_led, show_light):
             if resource is not None:
                 try:
                     resource.close()

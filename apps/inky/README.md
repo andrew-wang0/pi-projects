@@ -5,14 +5,17 @@ on an Inky Impression 7.3 Spectra (800×480).
 
 ## Behavior
 
-1. Pressing the capture button turns on the signal LED and big show light.
+1. Pressing the capture button turns on the small signal LED.
 2. Releasing the same accepted press captures one photo.
-3. Both lights turn off as soon as capture completes.
+3. The signal LED turns off as soon as capture completes.
 4. The photo is cropped to 800×480, stored as a PNG, and shown on the display.
 
 Button activity is ignored from the start of capture through the end of the
 display refresh. A press that begins during this time remains invalid even if
 the button is released after the refresh finishes.
+
+The big show light is independent of capture state. It remains at
+`LIGHT_BRIGHTNESS` while the app runs and does not react to the button.
 
 The app has no video, preview, countdown, or graphical-desktop dependency.
 
@@ -21,7 +24,7 @@ The app has no video, preview, countdown, or graphical-desktop dependency.
 All GPIO values are BCM numbers.
 
 - Capture button: GPIO24 (physical pin 18) to ground (physical pin 20).
-- Signal LED: GPIO12 (physical pin 32), through a series resistor and LED, to
+- Signal LED: GPIO13 (physical pin 33), through a series resistor and LED, to
   ground (physical pin 34).
 - Show-light PWM: GPIO18 (physical pin 12) to the MOSFET controller input.
 - MOSFET controller signal ground: physical pin 14.
@@ -78,7 +81,7 @@ and blocks until the refresh is complete.
 
 - `INKY_IMAGE_DIR=/path/to/images`
 - `CAPTURE_BUTTON_PIN=24`
-- `SIGNAL_LED_PIN=12`
+- `SIGNAL_LED_PIN=13`
 - `SIGNAL_LED_ACTIVE_HIGH=true`
 - `LIGHT_PWM_PIN=18`
 - `LIGHT_ACTIVE_HIGH=true`

@@ -10,7 +10,7 @@ from PIL import Image
 
 from camera import Camera
 from display import InkyDisplay
-from hardware import ButtonEvent, CaptureButton, CaptureLights
+from hardware import ButtonEvent, CaptureButton, SignalLed
 
 
 LOGGER = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class InkyApp:
         camera: Camera,
         display: InkyDisplay,
         controls: CaptureButton,
-        light: CaptureLights,
+        signal_led: SignalLed,
         events: SimpleQueue[ButtonEvent],
         stop_event: threading.Event,
         image_dir: Path,
@@ -30,7 +30,7 @@ class InkyApp:
         self._camera = camera
         self._display = display
         self._controls = controls
-        self._light = light
+        self._signal_led = signal_led
         self._events = events
         self._stop_event = stop_event
         self._image_dir = image_dir
@@ -48,12 +48,12 @@ class InkyApp:
                 self._capture_and_show()
 
     def _prepare_capture(self) -> None:
-        self._light.on()
+        self._signal_led.on()
         try:
             self._camera.start()
         except Exception:
             LOGGER.exception("Camera start failed")
-            self._light.off()
+            self._signal_led.off()
             self._controls.set_enabled(False)
             self._discard_events()
             self._controls.set_enabled(True)
@@ -67,7 +67,7 @@ class InkyApp:
                 LOGGER.exception("Photo capture failed")
                 return
             finally:
-                self._light.off()
+                self._signal_led.off()
                 try:
                     self._camera.stop()
                 except Exception:
