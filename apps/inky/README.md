@@ -104,8 +104,9 @@ The card sends a versioned JSON command to `inky/display/set`. The image is a
 base64 JPEG composed in the browser. Inky validates the command, keeps at most
 one waiting remote image, serializes it with camera and e-paper access, stores
 the prepared PNG in `images/`, displays it, and publishes progress to
-`inky/display/status`. If another upload arrives while one is waiting, the
-newest upload replaces the waiting one.
+`inky/display/status`. If another upload arrives while one is already waiting,
+the new request receives an error so that no dashboard silently loses its
+upload.
 
 Light commands fade over one second by default, including ordinary dashboard
 toggle and brightness changes. Home Assistant can override that duration per

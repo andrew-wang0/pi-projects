@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from queue import Empty, Full, Queue, SimpleQueue
+from queue import Full, Queue, SimpleQueue
 import signal
 import threading
 
@@ -32,14 +32,8 @@ def main() -> None:
     def enqueue_display(request: DisplayRequest) -> None:
         try:
             display_requests.put_nowait(request)
-            return
-        except Full:
-            pass
-        try:
-            display_requests.get_nowait()
-        except Empty:
-            pass
-        display_requests.put_nowait(request)
+        except Full as error:
+            raise RuntimeError("another image is already waiting") from error
 
     def stop(_signum=None, _frame=None) -> None:
         stop_event.set()

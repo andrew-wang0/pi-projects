@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Callable
 from datetime import datetime, timezone
 import json
@@ -10,7 +11,7 @@ import threading
 import paho.mqtt.client as mqtt
 
 from config import Config, MqttConfig
-from display_command import DisplayRequest, parse_display_request
+from display_command import DisplayCommandError, DisplayRequest, parse_display_request
 from hardware import ShowLight
 
 
@@ -32,6 +33,7 @@ class HomeAssistant:
         self._client: mqtt.Client | None = None
         self._display_status_lock = threading.Lock()
         self._display_status: dict[str, str] = {"state": "idle"}
+        self._seen_display_requests: deque[str] = deque(maxlen=100)
 
         if not self._mqtt.host:
             return
@@ -155,14 +157,30 @@ class HomeAssistant:
     def _handle_display_command(self, payload: bytes) -> None:
         try:
             request = parse_display_request(payload, self._mqtt.display_max_bytes)
+        except DisplayCommandError as error:
+            LOGGER.warning("Ignored invalid MQTT display command: %s", error)
+            self.publish_display_status(
+                "error",
+                request_id=error.request_id,
+                message=str(error),
+            )
+            return
+
+        if request.request_id in self._seen_display_requests:
+            LOGGER.info("Ignored duplicate display request %s", request.request_id)
+            return
+
+        try:
             self.publish_display_status("queued", request.request_id)
             self._on_display(request)
-        except ValueError as error:
-            LOGGER.warning("Ignored invalid MQTT display command: %s", error)
-            self.publish_display_status("error", message=str(error))
+            self._seen_display_requests.append(request.request_id)
         except Exception as error:
             LOGGER.exception("Could not queue MQTT display command")
-            self.publish_display_status("error", message=str(error))
+            self.publish_display_status(
+                "error",
+                request_id=request.request_id,
+                message=str(error),
+            )
 
     def _publish_discovery(self) -> None:
         assert self._client is not None

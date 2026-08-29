@@ -1,7 +1,7 @@
 const CARD_VERSION = "1.0.0";
 const WIDTH = 800;
 const HEIGHT = 480;
-const HISTORY_LIMIT = 12;
+const HISTORY_LIMIT = 8;
 
 class InkyCard extends HTMLElement {
   constructor() {
@@ -16,6 +16,7 @@ class InkyCard extends HTMLElement {
     this._drawEnabled = false;
     this._pending = undefined;
     this._requestId = undefined;
+    this._requestTimeout = undefined;
   }
 
   static getStubConfig() {
@@ -35,13 +36,13 @@ class InkyCard extends HTMLElement {
       image_entity: "image.inky_latest_photo",
       status_entity: "sensor.inky_display_status",
       max_image_bytes: 2000000,
+      max_upload_bytes: 15000000,
+      max_upload_pixels: 25000000,
       jpeg_quality: 0.9,
+      command_timeout_seconds: 180,
       ...config,
     };
-    if (
-      typeof this._config.topic_prefix !== "string" ||
-      !this._config.topic_prefix.trim()
-    ) {
+    if (typeof this._config.topic_prefix !== "string" || !this._config.topic_prefix.trim()) {
       throw new Error("topic_prefix must be a non-empty string");
     }
     this._config.topic_prefix = this._config.topic_prefix.replace(/\/+$/, "");
@@ -49,8 +50,10 @@ class InkyCard extends HTMLElement {
       1,
       Math.max(0.5, Number(this._config.jpeg_quality) || 0.9),
     );
-    this._config.max_image_bytes =
-      Number(this._config.max_image_bytes) || 2000000;
+    this._config.max_image_bytes = Number(this._config.max_image_bytes) || 2000000;
+    this._config.max_upload_bytes = Number(this._config.max_upload_bytes) || 15000000;
+    this._config.max_upload_pixels = Number(this._config.max_upload_pixels) || 25000000;
+    this._config.command_timeout_seconds = Number(this._config.command_timeout_seconds) || 180;
     if (this._rendered) {
       this._updateHaStatus();
     }
@@ -66,6 +69,13 @@ class InkyCard extends HTMLElement {
 
   getCardSize() {
     return 8;
+  }
+
+  disconnectedCallback() {
+    this._clearRequestTimeout();
+    this._requestId = undefined;
+    const button = this.shadowRoot.getElementById("sendButton");
+    if (button) button.disabled = false;
   }
 
   _render() {
@@ -136,6 +146,7 @@ class InkyCard extends HTMLElement {
           grid-template-columns: minmax(140px, 1fr) auto auto;
         }
         button,
+        .file-button,
         select,
         input {
           background: var(--card-background-color);
@@ -150,6 +161,21 @@ class InkyCard extends HTMLElement {
         button {
           cursor: pointer;
         }
+        .file-button {
+          align-items: center;
+          cursor: pointer;
+          display: inline-flex;
+          overflow: hidden;
+          position: relative;
+        }
+        .file-button input {
+          cursor: pointer;
+          height: 100%;
+          inset: 0;
+          opacity: 0;
+          position: absolute;
+          width: 100%;
+        }
         button:hover:not(:disabled) {
           background: var(--secondary-background-color);
         }
@@ -161,9 +187,6 @@ class InkyCard extends HTMLElement {
         button:disabled {
           cursor: wait;
           opacity: 0.55;
-        }
-        input[type="file"] {
-          display: none;
         }
         input[type="range"] {
           min-height: 30px;
@@ -198,6 +221,7 @@ class InkyCard extends HTMLElement {
             grid-column: 1 / -1;
           }
           button,
+          .file-button,
           select,
           input {
             min-height: 44px;
@@ -216,9 +240,9 @@ class InkyCard extends HTMLElement {
           </div>
 
           <div class="toolbar">
-            <label>
-              <input id="photoInput" type="file" accept="image/*" />
-              <button id="photoButton" type="button">Upload photo</button>
+            <label class="file-button">
+              Upload photo
+              <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" />
             </label>
             <button id="latestButton" type="button">Use latest</button>
             <button id="drawButton" type="button">Draw</button>
@@ -282,9 +306,6 @@ class InkyCard extends HTMLElement {
 
   _bindEvents() {
     const photoInput = this.shadowRoot.getElementById("photoInput");
-    this.shadowRoot
-      .getElementById("photoButton")
-      .addEventListener("click", () => photoInput.click());
     photoInput.addEventListener("change", async () => {
       const [file] = photoInput.files || [];
       if (file) {
@@ -302,9 +323,7 @@ class InkyCard extends HTMLElement {
       .getElementById("textButton")
       .addEventListener("click", () => this._selectText());
     this.shadowRoot.querySelectorAll(".sticker").forEach((button) => {
-      button.addEventListener("click", () =>
-        this._selectSticker(button.dataset.sticker),
-      );
+      button.addEventListener("click", () => this._selectSticker(button.dataset.sticker));
     });
     this.shadowRoot
       .getElementById("undoButton")
@@ -312,30 +331,36 @@ class InkyCard extends HTMLElement {
     this.shadowRoot
       .getElementById("redoButton")
       .addEventListener("click", () => this._redoChange());
-    this.shadowRoot
-      .getElementById("clearButton")
-      .addEventListener("click", () => this._clear());
-    this.shadowRoot
-      .getElementById("sendButton")
-      .addEventListener("click", () => this._send());
+    this.shadowRoot.getElementById("clearButton").addEventListener("click", () => this._clear());
+    this.shadowRoot.getElementById("sendButton").addEventListener("click", () => this._send());
 
-    this._canvas.addEventListener("pointerdown", (event) =>
-      this._pointerDown(event),
-    );
-    this._canvas.addEventListener("pointermove", (event) =>
-      this._pointerMove(event),
-    );
-    this._canvas.addEventListener("pointerup", (event) =>
-      this._pointerUp(event),
-    );
-    this._canvas.addEventListener("pointercancel", (event) =>
-      this._pointerUp(event),
-    );
+    this._canvas.addEventListener("pointerdown", (event) => this._pointerDown(event));
+    this._canvas.addEventListener("pointermove", (event) => this._pointerMove(event));
+    this._canvas.addEventListener("pointerup", (event) => this._pointerUp(event));
+    this._canvas.addEventListener("pointercancel", (event) => this._pointerUp(event));
   }
 
   async _loadFile(file) {
-    if (!file.type.startsWith("image/")) {
-      this._setEditorStatus("Choose an image file.", true);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      this._setEditorStatus("Choose a JPEG, PNG, or WebP image.", true);
+      return;
+    }
+    if (file.size > this._config.max_upload_bytes) {
+      this._setEditorStatus(
+        `Photo is ${file.size} bytes; upload limit is ${this._config.max_upload_bytes}.`,
+        true,
+      );
+      return;
+    }
+    try {
+      const { width, height } = await this._readImageDimensions(file);
+      if (width * height > this._config.max_upload_pixels) {
+        throw new Error(
+          `${width}×${height} exceeds the ${this._config.max_upload_pixels} pixel limit`,
+        );
+      }
+    } catch (error) {
+      this._setEditorStatus(`Could not use photo: ${error.message}`, true);
       return;
     }
     const url = URL.createObjectURL(file);
@@ -353,20 +378,14 @@ class InkyCard extends HTMLElement {
     const entity = this._hass?.states[this._config.image_entity];
     const source = entity?.attributes?.entity_picture;
     if (!source) {
-      this._setEditorStatus(
-        `No image is available from ${this._config.image_entity}.`,
-        true,
-      );
+      this._setEditorStatus(`No image is available from ${this._config.image_entity}.`, true);
       return;
     }
     try {
       await this._loadImage(source);
       this._setEditorStatus("Latest Inky photo loaded.");
     } catch (error) {
-      this._setEditorStatus(
-        `Could not load the latest photo: ${error.message}`,
-        true,
-      );
+      this._setEditorStatus(`Could not load the latest photo: ${error.message}`, true);
     }
   }
 
@@ -374,19 +393,17 @@ class InkyCard extends HTMLElement {
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => {
+        if (image.width * image.height > 50000000) {
+          reject(new Error("image dimensions exceed 50 megapixels"));
+          return;
+        }
         this._saveForUndo();
         const scale = Math.max(WIDTH / image.width, HEIGHT / image.height);
         const width = image.width * scale;
         const height = image.height * scale;
         this._context.fillStyle = "#ffffff";
         this._context.fillRect(0, 0, WIDTH, HEIGHT);
-        this._context.drawImage(
-          image,
-          (WIDTH - width) / 2,
-          (HEIGHT - height) / 2,
-          width,
-          height,
-        );
+        this._context.drawImage(image, (WIDTH - width) / 2, (HEIGHT - height) / 2, width, height);
         resolve();
       };
       image.onerror = () => reject(new Error("the browser rejected the image"));
@@ -394,16 +411,86 @@ class InkyCard extends HTMLElement {
     });
   }
 
+  async _readImageDimensions(file) {
+    const buffer = await file.slice(0, 1048576).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(buffer);
+
+    if (
+      file.type === "image/png" &&
+      bytes.length >= 24 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47
+    ) {
+      return { width: view.getUint32(16), height: view.getUint32(20) };
+    }
+
+    if (file.type === "image/jpeg" && bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+      const startOfFrame = new Set([
+        0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+      ]);
+      let offset = 2;
+      while (offset + 8 < bytes.length) {
+        while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+        const marker = bytes[offset];
+        offset += 1;
+        if (marker === 0xd9 || marker === 0xda || offset + 1 >= bytes.length) break;
+        if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) continue;
+        const length = view.getUint16(offset);
+        if (length < 2 || offset + length > bytes.length) break;
+        if (startOfFrame.has(marker) && length >= 7) {
+          return {
+            width: view.getUint16(offset + 5),
+            height: view.getUint16(offset + 3),
+          };
+        }
+        offset += length;
+      }
+    }
+
+    if (
+      file.type === "image/webp" &&
+      bytes.length >= 30 &&
+      this._ascii(bytes, 0, 4) === "RIFF" &&
+      this._ascii(bytes, 8, 4) === "WEBP"
+    ) {
+      const chunk = this._ascii(bytes, 12, 4);
+      if (chunk === "VP8X") {
+        return {
+          width: 1 + bytes[24] + (bytes[25] << 8) + (bytes[26] << 16),
+          height: 1 + bytes[27] + (bytes[28] << 8) + (bytes[29] << 16),
+        };
+      }
+      if (chunk === "VP8 " && bytes.length >= 30) {
+        return {
+          width: view.getUint16(26, true) & 0x3fff,
+          height: view.getUint16(28, true) & 0x3fff,
+        };
+      }
+      if (chunk === "VP8L" && bytes[20] === 0x2f) {
+        const bits = view.getUint32(21, true);
+        return {
+          width: 1 + (bits & 0x3fff),
+          height: 1 + ((bits >>> 14) & 0x3fff),
+        };
+      }
+    }
+
+    throw new Error("image dimensions could not be read");
+  }
+
+  _ascii(bytes, offset, length) {
+    return String.fromCharCode(...bytes.subarray(offset, offset + length));
+  }
+
   _toggleDraw() {
     this._pending = undefined;
     this._drawEnabled = !this._drawEnabled;
-    this.shadowRoot
-      .getElementById("drawButton")
-      .classList.toggle("active", this._drawEnabled);
+    this.shadowRoot.getElementById("drawButton").classList.toggle("active", this._drawEnabled);
     this._setEditorStatus(
-      this._drawEnabled
-        ? "Draw directly on the photo."
-        : "Drawing tool switched off.",
+      this._drawEnabled ? "Draw directly on the photo." : "Drawing tool switched off.",
     );
   }
 
@@ -452,9 +539,7 @@ class InkyCard extends HTMLElement {
     this._context.beginPath();
     this._context.moveTo(point.x, point.y);
     this._context.strokeStyle = this._selectedColor();
-    this._context.lineWidth = Number(
-      this.shadowRoot.getElementById("width").value,
-    );
+    this._context.lineWidth = Number(this.shadowRoot.getElementById("width").value);
     this._context.lineCap = "round";
     this._context.lineJoin = "round";
     this._context.lineTo(point.x + 0.01, point.y);
@@ -482,10 +567,7 @@ class InkyCard extends HTMLElement {
   }
 
   _drawText(x, y, item) {
-    const maxWidth = Math.min(
-      700,
-      Math.max(180, 2 * Math.min(x, WIDTH - x) - 20),
-    );
+    const maxWidth = Math.min(700, Math.max(180, 2 * Math.min(x, WIDTH - x) - 20));
     const size = item.size;
     const lineHeight = Math.round(size * 1.18);
     this._context.font = `700 ${size}px sans-serif`;
@@ -496,9 +578,7 @@ class InkyCard extends HTMLElement {
     const startY = y - ((lines.length - 1) * lineHeight) / 2;
     lines.forEach((line, index) => {
       const lineY = startY + index * lineHeight;
-      this._context.strokeStyle = this._selectedColor() === "#000000"
-        ? "#ffffff"
-        : "#000000";
+      this._context.strokeStyle = this._selectedColor() === "#000000" ? "#ffffff" : "#000000";
       this._context.lineWidth = Math.max(4, Math.round(size / 10));
       this._context.strokeText(line, x, lineY, maxWidth);
       this._context.fillStyle = this._selectedColor();
@@ -586,9 +666,7 @@ class InkyCard extends HTMLElement {
   }
 
   _saveForUndo() {
-    this._history.push(
-      this._context.getImageData(0, 0, WIDTH, HEIGHT),
-    );
+    this._history.push(this._context.getImageData(0, 0, WIDTH, HEIGHT));
     if (this._history.length > HISTORY_LIMIT) {
       this._history.shift();
     }
@@ -634,8 +712,7 @@ class InkyCard extends HTMLElement {
     try {
       const blob = await new Promise((resolve, reject) => {
         this._canvas.toBlob(
-          (result) =>
-            result ? resolve(result) : reject(new Error("image encoding failed")),
+          (result) => (result ? resolve(result) : reject(new Error("image encoding failed"))),
           "image/jpeg",
           this._config.jpeg_quality,
         );
@@ -647,8 +724,7 @@ class InkyCard extends HTMLElement {
       }
       const data = await this._blobToBase64(blob);
       const requestId =
-        globalThis.crypto?.randomUUID?.() ||
-        `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       const payload = JSON.stringify({
         version: 1,
         request_id: requestId,
@@ -656,17 +732,22 @@ class InkyCard extends HTMLElement {
         data,
       });
       this._requestId = requestId;
+      this._startRequestTimeout(requestId);
       await this._hass.callService("mqtt", "publish", {
         topic: `${this._config.topic_prefix}/display/set`,
         payload,
         qos: 1,
         retain: false,
       });
-      this._setEditorStatus("Sent to Inky. Waiting for the display…");
+      if (this._requestId === requestId) {
+        this._setEditorStatus("Sent to Inky. Waiting for the display…");
+      }
     } catch (error) {
+      this._clearRequestTimeout();
+      this._requestId = undefined;
       this._setEditorStatus(`Could not send image: ${error.message}`, true);
     } finally {
-      button.disabled = false;
+      button.disabled = Boolean(this._requestId);
     }
   }
 
@@ -689,6 +770,12 @@ class InkyCard extends HTMLElement {
     }
     if (entity.state === "unavailable") {
       element.textContent = "Inky offline";
+      if (this._requestId) {
+        this._setEditorStatus("Inky went offline before accepting the image.", true);
+        this._requestId = undefined;
+        this._clearRequestTimeout();
+        this.shadowRoot.getElementById("sendButton").disabled = false;
+      }
       return;
     }
     const labels = {
@@ -698,27 +785,45 @@ class InkyCard extends HTMLElement {
       error: "Display error",
     };
     element.textContent = labels[entity.state] || `Inky: ${entity.state}`;
-    const isCurrentRequest =
-      this._requestId &&
-      entity.attributes.request_id === this._requestId;
+    const isCurrentRequest = this._requestId && entity.attributes.request_id === this._requestId;
     if (isCurrentRequest && entity.state === "idle") {
       this._setEditorStatus("Image is now displayed.");
       this._requestId = undefined;
+      this._clearRequestTimeout();
+      this.shadowRoot.getElementById("sendButton").disabled = false;
     } else if (isCurrentRequest && entity.state === "error") {
+      this._setEditorStatus(entity.attributes.message || "Inky could not display the image.", true);
+      this._requestId = undefined;
+      this._clearRequestTimeout();
+      this.shadowRoot.getElementById("sendButton").disabled = false;
+    }
+  }
+
+  _startRequestTimeout(requestId) {
+    this._clearRequestTimeout();
+    this._requestTimeout = globalThis.setTimeout(() => {
+      if (this._requestId !== requestId) return;
+      this._requestId = undefined;
+      this._requestTimeout = undefined;
+      this.shadowRoot.getElementById("sendButton").disabled = false;
       this._setEditorStatus(
-        entity.attributes.message || "Inky could not display the image.",
+        "Timed out waiting for Inky. Check the device and MQTT connection.",
         true,
       );
-      this._requestId = undefined;
+    }, this._config.command_timeout_seconds * 1000);
+  }
+
+  _clearRequestTimeout() {
+    if (this._requestTimeout !== undefined) {
+      globalThis.clearTimeout(this._requestTimeout);
+      this._requestTimeout = undefined;
     }
   }
 
   _updateHistoryButtons() {
     if (!this.shadowRoot.getElementById("undoButton")) return;
-    this.shadowRoot.getElementById("undoButton").disabled =
-      this._history.length === 0;
-    this.shadowRoot.getElementById("redoButton").disabled =
-      this._redo.length === 0;
+    this.shadowRoot.getElementById("undoButton").disabled = this._history.length === 0;
+    this.shadowRoot.getElementById("redoButton").disabled = this._redo.length === 0;
   }
 
   _point(event) {
