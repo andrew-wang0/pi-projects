@@ -15,11 +15,15 @@ class InkyDisplay:
         if tuple(self._display.resolution) != self.RESOLUTION:
             raise RuntimeError("Expected an Inky Impression 7.3 at 800x480")
 
-    def show(self, image: Image.Image) -> None:
-        fitted = ImageOps.fit(
+    def prepare(self, image: Image.Image) -> Image.Image:
+        return ImageOps.fit(
             image.convert("RGB"),
             self.RESOLUTION,
             method=Image.Resampling.LANCZOS,
         )
-        self._display.set_image(fitted, saturation=self._saturation)
+
+    def show(self, image: Image.Image) -> None:
+        if image.size != self.RESOLUTION:
+            raise ValueError("Inky image must be 800x480")
+        self._display.set_image(image, saturation=self._saturation)
         self._display.show()

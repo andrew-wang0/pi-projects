@@ -8,14 +8,13 @@ on an Inky Impression 7.3 Spectra (800×480).
 1. Pressing the capture button turns on the signal LED and big show light.
 2. Releasing the same accepted press captures one photo.
 3. Both lights turn off as soon as capture completes.
-4. The photo is converted and the Inky display refreshes.
+4. The photo is cropped to 800×480, stored as a PNG, and shown on the display.
 
 Button activity is ignored from the start of capture through the end of the
 display refresh. A press that begins during this time remains invalid even if
 the button is released after the refresh finishes.
 
-The app has no video, preview, countdown, media library, or graphical-desktop
-dependency.
+The app has no video, preview, countdown, or graphical-desktop dependency.
 
 ## Wiring
 
@@ -64,6 +63,11 @@ when constructing the Pillow RGB image.
 center-crops the camera's 16:9 image to the display's 5:3 aspect ratio and
 resizes it to exactly 800×480 without stretching it.
 
+Every fitted image is stored losslessly in `images/` as
+`inky_YYYYMMDD_HHMMSS_microseconds.png`. Set `INKY_IMAGE_DIR` to use another
+directory. The saved PNG is the full-color 800×480 source supplied to Inky,
+before panel palette conversion.
+
 The fitted RGB image is passed to the official Inky library's
 `set_image(..., saturation=0.5)`. Its Spectra driver quantizes and
 Floyd–Steinberg dithers the image into the panel's six native colors: black,
@@ -72,6 +76,7 @@ and blocks until the refresh is complete.
 
 ## Configuration
 
+- `INKY_IMAGE_DIR=/path/to/images`
 - `CAPTURE_BUTTON_PIN=24`
 - `SIGNAL_LED_PIN=12`
 - `SIGNAL_LED_ACTIVE_HIGH=true`

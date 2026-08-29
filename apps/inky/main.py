@@ -22,6 +22,7 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     config = load_config()
+    config.image_dir.mkdir(parents=True, exist_ok=True)
     stop_event = threading.Event()
     events: SimpleQueue[ButtonEvent] = SimpleQueue()
 
@@ -40,7 +41,15 @@ def main() -> None:
         light = CaptureLights(config)
         controls = CaptureButton(config, events.put)
         camera = Camera(config)
-        InkyApp(camera, display, controls, light, events, stop_event).run()
+        InkyApp(
+            camera,
+            display,
+            controls,
+            light,
+            events,
+            stop_event,
+            config.image_dir,
+        ).run()
     finally:
         for resource in (controls, camera, light):
             if resource is not None:

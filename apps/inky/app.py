@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime
 import logging
+from pathlib import Path
 from queue import Empty, SimpleQueue
 import threading
+
+from PIL import Image
 
 from camera import Camera
 from display import InkyDisplay
@@ -21,6 +25,7 @@ class InkyApp:
         light: CaptureLights,
         events: SimpleQueue[ButtonEvent],
         stop_event: threading.Event,
+        image_dir: Path,
     ) -> None:
         self._camera = camera
         self._display = display
@@ -28,6 +33,7 @@ class InkyApp:
         self._light = light
         self._events = events
         self._stop_event = stop_event
+        self._image_dir = image_dir
 
     def run(self) -> None:
         while not self._stop_event.is_set():
@@ -67,10 +73,14 @@ class InkyApp:
                 except Exception:
                     LOGGER.exception("Camera stop failed")
 
+            prepared = self._display.prepare(image)
             try:
-                self._display.show(image)
+                self._store(prepared)
             except Exception:
-                LOGGER.exception("Inky display update failed")
+                LOGGER.exception("Image storage failed")
+            self._display.show(prepared)
+        except Exception:
+            LOGGER.exception("Inky image preparation or display update failed")
         finally:
             self._discard_events()
             self._controls.set_enabled(True)
@@ -81,3 +91,9 @@ class InkyApp:
                 self._events.get_nowait()
             except Empty:
                 return
+
+    def _store(self, image: Image.Image) -> None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        path = self._image_dir / f"inky_{timestamp}.png"
+        image.save(path, format="PNG")
+        LOGGER.info("Stored %s", path)

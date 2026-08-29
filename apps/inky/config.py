@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+from pathlib import Path
 
 
 INKY_DISPLAY_PINS = {2, 3, 8, 9, 10, 11, 17, 22, 27}
@@ -32,6 +33,7 @@ def _boolean(name: str, default: bool) -> bool:
 
 @dataclass(frozen=True)
 class Config:
+    image_dir: Path
     capture_button_pin: int
     signal_led_pin: int
     signal_led_active_high: bool
@@ -47,7 +49,9 @@ class Config:
 
 
 def load_config() -> Config:
+    app_dir = Path(__file__).resolve().parent
     config = Config(
+        image_dir=Path(os.getenv("INKY_IMAGE_DIR", app_dir / "images")).expanduser(),
         capture_button_pin=_integer("CAPTURE_BUTTON_PIN", 24),
         signal_led_pin=_integer("SIGNAL_LED_PIN", 12),
         signal_led_active_high=_boolean("SIGNAL_LED_ACTIVE_HIGH", True),
