@@ -97,6 +97,11 @@ data:
 
 Use `light.turn_off` with the same `transition` field for a smooth fade out.
 
+PWM stays at a fixed frequency. To avoid unstable ultra-short pulses, nonzero
+brightness is remapped: Home Assistant 1% uses 25% physical duty, then scales
+linearly to 100% duty at 100% brightness. Off remains 0%. Change
+`LIGHT_MINIMUM_DUTY` if the hardware needs a different lower bound.
+
 Home Assistant does not retain previous MQTT image payloads automatically. To
 copy each received capture into its local media directory, create `/media/inky`
 on the Home Assistant host and add this automation:
@@ -160,6 +165,7 @@ and blocks until the refresh is complete.
 - `LIGHT_ACTIVE_HIGH=true`
 - `LIGHT_BRIGHTNESS=1.0`
 - `LIGHT_PWM_FREQUENCY=1000`
+- `LIGHT_MINIMUM_DUTY=0.25`
 - `BUTTON_BOUNCE_SECONDS=0.08`
 - `CAMERA_WIDTH=2304`
 - `CAMERA_HEIGHT=1296`

@@ -104,11 +104,12 @@ class ShowLight:
     def __init__(self, config: Config) -> None:
         self._brightness = config.light_brightness
         self._on = self._brightness > 0
+        self._minimum_duty = config.light_minimum_duty
         self._lock = threading.Lock()
         self._output = PWMOutputDevice(
             config.light_pwm_pin,
             active_high=config.light_active_high,
-            initial_value=self._brightness,
+            initial_value=self._physical_level(),
             frequency=config.light_pwm_frequency,
         )
 
@@ -136,7 +137,7 @@ class ShowLight:
                     self._on = brightness > 0
             if on is not None:
                 self._on = on
-            target = self._brightness if self._on else 0.0
+            target = self._physical_level()
             if transition == 0:
                 self._output.value = target
                 return
@@ -163,6 +164,12 @@ class ShowLight:
                 if transition_id != self._transition_id:
                     return
                 self._output.value = start + (target - start) * step / steps
+
+    def _physical_level(self) -> float:
+        if not self._on or self._brightness <= 0:
+            return 0.0
+        scaled = max(0.0, (self._brightness - 0.01) / 0.99)
+        return self._minimum_duty + scaled * (1.0 - self._minimum_duty)
 
     def state(self) -> tuple[bool, float]:
         with self._lock:

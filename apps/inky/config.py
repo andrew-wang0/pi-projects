@@ -53,6 +53,7 @@ class Config:
     light_active_high: bool
     light_brightness: float
     light_pwm_frequency: float
+    light_minimum_duty: float
     button_bounce_seconds: float
     camera_size: tuple[int, int]
     camera_hflip: bool
@@ -72,6 +73,7 @@ def load_config() -> Config:
         light_active_high=_boolean("LIGHT_ACTIVE_HIGH", True),
         light_brightness=_number("LIGHT_BRIGHTNESS", 1.0),
         light_pwm_frequency=_number("LIGHT_PWM_FREQUENCY", 1_000.0),
+        light_minimum_duty=_number("LIGHT_MINIMUM_DUTY", 0.25),
         button_bounce_seconds=_number("BUTTON_BOUNCE_SECONDS", 0.08),
         camera_size=(
             _integer("CAMERA_WIDTH", 2304),
@@ -115,6 +117,8 @@ def load_config() -> Config:
         raise ValueError("LIGHT_BRIGHTNESS must be between 0.0 and 1.0")
     if not 0.1 <= config.light_pwm_frequency <= 10_000:
         raise ValueError("LIGHT_PWM_FREQUENCY must be between 0.1 and 10000")
+    if not 0.0 <= config.light_minimum_duty < 1.0:
+        raise ValueError("LIGHT_MINIMUM_DUTY must be at least 0.0 and below 1.0")
     if config.button_bounce_seconds < 0:
         raise ValueError("BUTTON_BOUNCE_SECONDS cannot be negative")
     if any(value <= 0 or value % 2 for value in config.camera_size):
