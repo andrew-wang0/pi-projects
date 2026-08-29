@@ -9,10 +9,11 @@ on an Inky Impression 7.3 Spectra (800×480).
    show light to 100% brightness (even if it was off).
 2. Releasing the same accepted press captures one photo.
 3. Both signal LEDs turn off as soon as capture completes.
-4. The big light then breathes from minimum to maximum and back every two
-   seconds while the photo is processed, stored, published, and shown on the
-   display.
-5. The big light returns to its latest Home Assistant setting.
+4. The big light then breathes smoothly from its current brightness between
+   true 0% and 100% PWM every two seconds while the photo is processed, stored,
+   published, and shown on the display.
+5. The big light fades back to its latest Home Assistant setting (true 0% PWM
+   when that setting is off).
 
 Button activity is ignored from the start of capture through the end of the
 display refresh. A press that begins during this time remains invalid even if
@@ -104,10 +105,12 @@ data:
 
 Use `light.turn_off` with the same `transition` field for a smooth fade out.
 
-PWM stays at a fixed frequency. To avoid unstable ultra-short pulses, nonzero
-brightness is remapped: Home Assistant 1% uses 25% physical duty, then scales
-linearly to 100% duty at 100% brightness. Off remains 0%. Change
-`LIGHT_MINIMUM_DUTY` if the hardware needs a different lower bound.
+PWM stays at a fixed frequency. Home Assistant off is always true 0% duty, and
+on/off commands fade to and from that level. To avoid unstable ultra-short
+pulses while the light is on, nonzero brightness is remapped: Home Assistant 1%
+uses 25% physical duty, then scales linearly to 100% duty at 100% brightness.
+Change `LIGHT_MINIMUM_DUTY` if the hardware needs a different lower bound for
+on states only.
 
 Home Assistant does not retain previous MQTT image payloads automatically. To
 save each new camera capture into local media and notify your phone, create

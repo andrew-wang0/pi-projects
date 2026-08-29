@@ -195,11 +195,11 @@ class ShowLight:
             self._restore_transition = self._default_transition
             self._transition_id += 1
             transition_id = self._transition_id
-            self._output.value = self._minimum_duty
+            start_level = max(0.0, min(1.0, float(self._output.value)))
 
         threading.Thread(
             target=self._breathe,
-            args=(transition_id,),
+            args=(transition_id, start_level),
             daemon=True,
         ).start()
 
@@ -223,12 +223,16 @@ class ShowLight:
             daemon=True,
         ).start()
 
-    def _breathe(self, transition_id: int) -> None:
+    def _breathe(self, transition_id: int, start_level: float) -> None:
+        # Cosine 0→1→0 over 2s. Pick the phase that matches the current level
+        # so the pulse continues smoothly instead of jumping to a fixed point.
+        phase = math.acos(1.0 - 2.0 * max(0.0, min(1.0, start_level))) / (
+            2.0 * math.pi
+        )
         started = time.monotonic()
         while True:
-            phase = (time.monotonic() - started) % 2.0 / 2.0
-            wave = (1.0 - math.cos(2.0 * math.pi * phase)) / 2.0
-            level = self._minimum_duty + wave * (1.0 - self._minimum_duty)
+            phase_now = (phase + (time.monotonic() - started) / 2.0) % 1.0
+            level = (1.0 - math.cos(2.0 * math.pi * phase_now)) / 2.0
             with self._lock:
                 if not self._busy or transition_id != self._transition_id:
                     return
