@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from enum import Enum, auto
 import threading
+import time
 
 from gpiozero import Button, Device, DigitalOutputDevice, PWMOutputDevice
 from gpiozero.pins.lgpio import LGPIOFactory
@@ -111,8 +112,22 @@ class ShowLight:
             frequency=config.light_pwm_frequency,
         )
 
-    def set(self, *, on: bool | None = None, brightness: float | None = None) -> None:
+        self._transition_id = 0
+
+    def set(
+        self,
+        *,
+        on: bool | None = None,
+        brightness: float | None = None,
+        transition: float = 0,
+    ) -> None:
+        if transition < 0:
+            raise ValueError("Transition cannot be negative")
+
         with self._lock:
+            self._transition_id += 1
+            transition_id = self._transition_id
+            start = self._output.value
             if brightness is not None:
                 if not 0.0 <= brightness <= 1.0:
                     raise ValueError("Brightness must be between 0.0 and 1.0")
@@ -121,7 +136,33 @@ class ShowLight:
                     self._on = brightness > 0
             if on is not None:
                 self._on = on
-            self._output.value = self._brightness if self._on else 0.0
+            target = self._brightness if self._on else 0.0
+            if transition == 0:
+                self._output.value = target
+                return
+
+        threading.Thread(
+            target=self._fade,
+            args=(transition_id, start, target, transition),
+            daemon=True,
+        ).start()
+
+    def _fade(
+        self,
+        transition_id: int,
+        start: float,
+        target: float,
+        duration: float,
+    ) -> None:
+        steps = max(1, int(duration * 50))
+        started = time.monotonic()
+        for step in range(1, steps + 1):
+            deadline = started + duration * step / steps
+            time.sleep(max(0, deadline - time.monotonic()))
+            with self._lock:
+                if transition_id != self._transition_id:
+                    return
+                self._output.value = start + (target - start) * step / steps
 
     def state(self) -> tuple[bool, float]:
         with self._lock:

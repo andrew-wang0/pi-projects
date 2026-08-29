@@ -76,12 +76,26 @@ local capture continues normally.
 
 Inky publishes retained MQTT Discovery configurations. Home Assistant creates:
 
-- `light.inky_show_light` for independent on/off and brightness control.
+- `light.inky_show_light`, named **Light**, for independent on/off and
+  brightness control.
 - `image.inky_latest_photo` for the latest captured 800×480 PNG.
-- `sensor.inky_last_photo` for the latest photo's filename.
 
 The device publishes online/offline availability and its actual light state.
 MQTT light commands remain active while the e-paper display refreshes.
+
+Light changes are instant unless Home Assistant sends a transition duration.
+For example, this action fades the big LED to 70% over two seconds:
+
+```yaml
+action: light.turn_on
+target:
+  entity_id: light.inky_show_light
+data:
+  brightness_pct: 70
+  transition: 2
+```
+
+Use `light.turn_off` with the same `transition` field for a smooth fade out.
 
 Home Assistant does not retain previous MQTT image payloads automatically. To
 copy each received capture into its local media directory, create `/media/inky`
@@ -91,20 +105,17 @@ on the Home Assistant host and add this automation:
 alias: Archive Inky photos
 triggers:
   - trigger: state
-    entity_id: sensor.inky_last_photo
-    not_from:
-      - unknown
-      - unavailable
+    entity_id: image.inky_latest_photo
+    not_from: unavailable
     not_to:
       - unknown
       - unavailable
 actions:
-  - delay: "00:00:01"
   - action: image.snapshot
     target:
       entity_id: image.inky_latest_photo
     data:
-      filename: "/media/inky/{{ trigger.to_state.state }}"
+      filename: "/media/inky/{{ as_timestamp(now()) | int }}.png"
 mode: queued
 ```
 

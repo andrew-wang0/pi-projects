@@ -47,7 +47,8 @@ class HomeAssistant:
     def publish_photo(self, path: Path) -> None:
         if not self._connected or self._client is None:
             return
-        self._publish_photo_payload(path)
+        if self._publish_photo_payload(path):
+            self._mark_published(path)
 
     def _publish_photo_payload(self, path: Path) -> bool:
         assert self._client is not None
@@ -57,15 +58,7 @@ class HomeAssistant:
             qos=1,
             retain=True,
         )
-        if message.rc != mqtt.MQTT_ERR_SUCCESS:
-            return False
-        self._client.publish(
-            self._topic("photo/name"),
-            path.name,
-            qos=1,
-            retain=True,
-        )
-        return True
+        return message.rc == mqtt.MQTT_ERR_SUCCESS
 
     def close(self) -> None:
         if self._client is None:
@@ -127,7 +120,12 @@ class HomeAssistant:
 
             value = command.get("brightness")
             brightness = None if value is None else float(value) / 255
-            self._light.set(on=on, brightness=brightness)
+            transition = float(command.get("transition", 0))
+            self._light.set(
+                on=on,
+                brightness=brightness,
+                transition=transition,
+            )
             self._publish_light_state()
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             LOGGER.warning("Ignored invalid MQTT light command: %s", error)
@@ -146,7 +144,7 @@ class HomeAssistant:
             "payload_not_available": "offline",
         }
         light = {
-            "name": "Show Light",
+            "name": "Light",
             "default_entity_id": f"light.{self._mqtt.device_id}_show_light",
             "unique_id": f"{self._mqtt.device_id}_show_light",
             "schema": "json",
@@ -154,6 +152,7 @@ class HomeAssistant:
             "state_topic": self._topic("light/state"),
             "brightness": True,
             "supported_color_modes": ["brightness"],
+            "transition": True,
             "device": device,
             **availability,
         }
@@ -166,18 +165,14 @@ class HomeAssistant:
             "device": device,
             **availability,
         }
-        last_photo = {
-            "name": "Last Photo",
-            "default_entity_id": f"sensor.{self._mqtt.device_id}_last_photo",
-            "unique_id": f"{self._mqtt.device_id}_last_photo",
-            "state_topic": self._topic("photo/name"),
-            "icon": "mdi:image",
-            "device": device,
-            **availability,
-        }
         self._publish_config("light", "show_light", light)
         self._publish_config("image", "latest_photo", image)
-        self._publish_config("sensor", "last_photo", last_photo)
+        legacy_sensor = (
+            f"{self._mqtt.discovery_prefix}/sensor/"
+            f"{self._mqtt.device_id}/last_photo/config"
+        )
+        self._client.publish(legacy_sensor, None, qos=1, retain=True)
+        self._client.publish(self._topic("photo/name"), None, qos=1, retain=True)
 
     def _publish_config(self, component: str, entity: str, payload: dict) -> None:
         assert self._client is not None
@@ -211,7 +206,20 @@ class HomeAssistant:
             )
         except (OSError, ValueError):
             return
-        self._publish_photo_payload(latest)
+        marker = self._config.image_dir / ".mqtt-last-photo"
+        try:
+            if marker.read_text().strip() == latest.name:
+                return
+        except OSError:
+            pass
+        if self._publish_photo_payload(latest):
+            self._mark_published(latest)
+
+    def _mark_published(self, path: Path) -> None:
+        try:
+            (self._config.image_dir / ".mqtt-last-photo").write_text(path.name)
+        except OSError:
+            LOGGER.warning("Could not update MQTT photo marker")
 
     def _topic(self, suffix: str) -> str:
         return f"{self._mqtt.topic_prefix}/{suffix}"
