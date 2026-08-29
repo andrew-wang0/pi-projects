@@ -38,6 +38,21 @@ status_entity: sensor.inky_display_status
 The defaults above match the Inky app defaults, so `type: custom:inky-card` is
 enough unless the MQTT device ID or topic prefix was changed.
 
+## Dashboard layout
+
+This is a regular Lovelace card; it does not add a sidebar item or replace a
+dashboard view. In a Sections dashboard it requests the full section width by
+default. The layout follows the width of the card itself:
+
+- wide cards show the 800×480 canvas beside the controls;
+- tablet and ordinary masonry cards stack the controls below the canvas;
+- phone cards use two-column touch controls, a stacked heading, and a
+  full-width **Send to Inky** button.
+
+Buttons and inputs have 44-pixel minimum touch targets. Drawing uses pointer
+events and works with a mouse, stylus, or touch. The canvas always preserves
+the display's 5:3 aspect ratio.
+
 Optional settings:
 
 ```yaml
@@ -68,6 +83,7 @@ the MQTT broker private to the local network and restrict the Inky broker
 account to its `inky/#` topics with broker ACLs.
 
 If Home Assistant caches an older card after an update, append a version to
-the resource URL, such as `/local/inky/inky-card.js?v=2`, and reload the page.
+the resource URL, such as `/local/inky/inky-card.js?v=1.1.0`, and reload the
+page.
 If `/config/www` was newly created, restart Home Assistant before registering
 the resource.

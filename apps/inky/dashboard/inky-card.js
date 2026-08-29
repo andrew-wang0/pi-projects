@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.0";
+const CARD_VERSION = "1.1.0";
 const WIDTH = 800;
 const HEIGHT = 480;
 const HISTORY_LIMIT = 8;
@@ -71,6 +71,13 @@ class InkyCard extends HTMLElement {
     return 8;
   }
 
+  getGridOptions() {
+    return {
+      columns: "full",
+      min_columns: 6,
+    };
+  }
+
   disconnectedCallback() {
     this._clearRequestTimeout();
     this._requestId = undefined;
@@ -83,9 +90,14 @@ class InkyCard extends HTMLElement {
       <style>
         :host {
           display: block;
+          min-width: 0;
+          width: 100%;
         }
         ha-card {
+          container-type: inline-size;
+          display: block;
           overflow: hidden;
+          width: 100%;
         }
         .content {
           display: grid;
@@ -97,6 +109,17 @@ class InkyCard extends HTMLElement {
           display: flex;
           gap: 10px;
           justify-content: space-between;
+        }
+        .editor-layout {
+          display: grid;
+          gap: 14px;
+          min-width: 0;
+        }
+        .controls {
+          align-content: start;
+          display: grid;
+          gap: 12px;
+          min-width: 0;
         }
         h2 {
           font-size: 20px;
@@ -122,6 +145,7 @@ class InkyCard extends HTMLElement {
           border: 1px solid var(--divider-color);
           border-radius: 8px;
           line-height: 0;
+          min-width: 0;
           overflow: hidden;
           position: relative;
           touch-action: none;
@@ -129,9 +153,10 @@ class InkyCard extends HTMLElement {
         canvas {
           aspect-ratio: 5 / 3;
           cursor: crosshair;
+          display: block;
           height: auto;
-          max-height: 70vh;
           object-fit: contain;
+          touch-action: none;
           width: 100%;
         }
         .toolbar {
@@ -145,6 +170,16 @@ class InkyCard extends HTMLElement {
           gap: 8px;
           grid-template-columns: minmax(140px, 1fr) auto auto;
         }
+        .brush-tools {
+          display: grid;
+          gap: 8px;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .field {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
         button,
         .file-button,
         select,
@@ -155,7 +190,8 @@ class InkyCard extends HTMLElement {
           box-sizing: border-box;
           color: var(--primary-text-color);
           font: inherit;
-          min-height: 40px;
+          min-height: 44px;
+          min-width: 0;
           padding: 8px 12px;
         }
         button {
@@ -167,6 +203,10 @@ class InkyCard extends HTMLElement {
           display: inline-flex;
           overflow: hidden;
           position: relative;
+        }
+        .file-button:focus-within {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 2px;
         }
         .file-button input {
           cursor: pointer;
@@ -189,9 +229,9 @@ class InkyCard extends HTMLElement {
           opacity: 0.55;
         }
         input[type="range"] {
-          min-height: 30px;
+          min-height: 44px;
           padding: 0;
-          width: 90px;
+          width: 100%;
         }
         .label {
           color: var(--secondary-text-color);
@@ -210,9 +250,37 @@ class InkyCard extends HTMLElement {
         .spacer {
           flex: 1 1 auto;
         }
-        @media (max-width: 600px) {
+        @container (min-width: 850px) {
+          .editor-layout {
+            align-items: start;
+            grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+          }
+        }
+        @container (max-width: 520px) {
           .content {
+            gap: 10px;
             padding: 12px;
+          }
+          .header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .controls {
+            gap: 10px;
+          }
+          .toolbar {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .toolbar > button,
+          .toolbar > .file-button {
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+          }
+          .brush-tools {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
           .text-row {
             grid-template-columns: 1fr auto;
@@ -220,11 +288,17 @@ class InkyCard extends HTMLElement {
           .text-row input {
             grid-column: 1 / -1;
           }
-          button,
-          .file-button,
-          select,
-          input {
-            min-height: 44px;
+          .sticker-tools > .label {
+            grid-column: 1 / -1;
+          }
+          .history-tools {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+          .history-tools .spacer {
+            display: none;
+          }
+          .history-tools #sendButton {
+            grid-column: 1 / -1;
           }
         }
       </style>
@@ -235,62 +309,90 @@ class InkyCard extends HTMLElement {
             <span class="ha-status" id="haStatus">Checking Inky…</span>
           </div>
 
-          <div class="canvas-wrap">
-            <canvas id="canvas" width="${WIDTH}" height="${HEIGHT}"></canvas>
-          </div>
+          <div class="editor-layout">
+            <div class="canvas-wrap">
+              <canvas
+                id="canvas"
+                width="${WIDTH}"
+                height="${HEIGHT}"
+                aria-label="Inky image editor"
+              ></canvas>
+            </div>
 
-          <div class="toolbar">
-            <label class="file-button">
-              Upload photo
-              <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" />
-            </label>
-            <button id="latestButton" type="button">Use latest</button>
-            <button id="drawButton" type="button">Draw</button>
-            <span class="label">Color</span>
-            <select id="color" aria-label="Markup color">
-              <option value="#000000">Black</option>
-              <option value="#ffffff">White</option>
-              <option value="#f2c500">Yellow</option>
-              <option value="#e1261c">Red</option>
-              <option value="#1464f4">Blue</option>
-              <option value="#159447">Green</option>
-            </select>
-            <span class="label">Width</span>
-            <input id="width" type="range" min="3" max="40" value="12" />
-          </div>
+            <div class="controls">
+              <div class="toolbar photo-tools">
+                <label class="file-button">
+                  Upload photo
+                  <input
+                    id="photoInput"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    aria-label="Upload photo"
+                  />
+                </label>
+                <button id="latestButton" type="button">Use latest</button>
+                <button id="drawButton" type="button" aria-pressed="false">Draw</button>
+              </div>
 
-          <div class="text-row">
-            <input
-              id="text"
-              type="text"
-              maxlength="120"
-              placeholder="Type a caption, then place it"
-            />
-            <select id="fontSize" aria-label="Caption size">
-              <option value="32">Small</option>
-              <option value="48" selected>Medium</option>
-              <option value="68">Large</option>
-            </select>
-            <button id="textButton" type="button">Place text</button>
-          </div>
+              <div class="brush-tools">
+                <label class="field">
+                  <span class="label">Color</span>
+                  <select id="color" aria-label="Markup color">
+                    <option value="#000000">Black</option>
+                    <option value="#ffffff">White</option>
+                    <option value="#f2c500">Yellow</option>
+                    <option value="#e1261c">Red</option>
+                    <option value="#1464f4">Blue</option>
+                    <option value="#159447">Green</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="label">Brush width</span>
+                  <input
+                    id="width"
+                    type="range"
+                    min="3"
+                    max="40"
+                    value="12"
+                    aria-label="Brush width"
+                  />
+                </label>
+              </div>
 
-          <div class="toolbar">
-            <span class="label">Stickers</span>
-            <button class="sticker" data-sticker="heart" type="button">♥ Heart</button>
-            <button class="sticker" data-sticker="star" type="button">★ Star</button>
-            <button class="sticker" data-sticker="smile" type="button">☺ Smile</button>
-            <button class="sticker" data-sticker="sun" type="button">☀ Sun</button>
-          </div>
+              <div class="text-row">
+                <input
+                  id="text"
+                  type="text"
+                  maxlength="120"
+                  placeholder="Type a caption, then place it"
+                />
+                <select id="fontSize" aria-label="Caption size">
+                  <option value="32">Small</option>
+                  <option value="48" selected>Medium</option>
+                  <option value="68">Large</option>
+                </select>
+                <button id="textButton" type="button">Place text</button>
+              </div>
 
-          <div class="toolbar">
-            <button id="undoButton" type="button">Undo</button>
-            <button id="redoButton" type="button">Redo</button>
-            <button id="clearButton" type="button">Clear</button>
-            <span class="spacer"></span>
-            <button id="sendButton" class="primary" type="button">Send to Inky</button>
-          </div>
-          <div class="editor-status" id="editorStatus">
-            Upload a photo or start drawing.
+              <div class="toolbar sticker-tools">
+                <span class="label">Stickers</span>
+                <button class="sticker" data-sticker="heart" type="button">♥ Heart</button>
+                <button class="sticker" data-sticker="star" type="button">★ Star</button>
+                <button class="sticker" data-sticker="smile" type="button">☺ Smile</button>
+                <button class="sticker" data-sticker="sun" type="button">☀ Sun</button>
+              </div>
+
+              <div class="toolbar history-tools">
+                <button id="undoButton" type="button">Undo</button>
+                <button id="redoButton" type="button">Redo</button>
+                <button id="clearButton" type="button">Clear</button>
+                <span class="spacer"></span>
+                <button id="sendButton" class="primary" type="button">Send to Inky</button>
+              </div>
+              <div class="editor-status" id="editorStatus" aria-live="polite">
+                Upload a photo or start drawing.
+              </div>
+            </div>
           </div>
         </div>
       </ha-card>
@@ -322,6 +424,12 @@ class InkyCard extends HTMLElement {
     this.shadowRoot
       .getElementById("textButton")
       .addEventListener("click", () => this._selectText());
+    this.shadowRoot.getElementById("text").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this._selectText();
+      }
+    });
     this.shadowRoot.querySelectorAll(".sticker").forEach((button) => {
       button.addEventListener("click", () => this._selectSticker(button.dataset.sticker));
     });
@@ -488,7 +596,9 @@ class InkyCard extends HTMLElement {
   _toggleDraw() {
     this._pending = undefined;
     this._drawEnabled = !this._drawEnabled;
-    this.shadowRoot.getElementById("drawButton").classList.toggle("active", this._drawEnabled);
+    const button = this.shadowRoot.getElementById("drawButton");
+    button.classList.toggle("active", this._drawEnabled);
+    button.setAttribute("aria-pressed", String(this._drawEnabled));
     this._setEditorStatus(
       this._drawEnabled ? "Draw directly on the photo." : "Drawing tool switched off.",
     );
@@ -501,7 +611,9 @@ class InkyCard extends HTMLElement {
       return;
     }
     this._drawEnabled = false;
-    this.shadowRoot.getElementById("drawButton").classList.remove("active");
+    const drawButton = this.shadowRoot.getElementById("drawButton");
+    drawButton.classList.remove("active");
+    drawButton.setAttribute("aria-pressed", "false");
     this._pending = {
       type: "text",
       text,
@@ -512,7 +624,9 @@ class InkyCard extends HTMLElement {
 
   _selectSticker(sticker) {
     this._drawEnabled = false;
-    this.shadowRoot.getElementById("drawButton").classList.remove("active");
+    const drawButton = this.shadowRoot.getElementById("drawButton");
+    drawButton.classList.remove("active");
+    drawButton.setAttribute("aria-pressed", "false");
     this._pending = { type: "sticker", sticker };
     this._setEditorStatus("Tap the photo to place the sticker.");
   }
@@ -829,8 +943,8 @@ class InkyCard extends HTMLElement {
   _point(event) {
     const bounds = this._canvas.getBoundingClientRect();
     return {
-      x: ((event.clientX - bounds.left) * WIDTH) / bounds.width,
-      y: ((event.clientY - bounds.top) * HEIGHT) / bounds.height,
+      x: Math.max(0, Math.min(WIDTH, ((event.clientX - bounds.left) * WIDTH) / bounds.width)),
+      y: Math.max(0, Math.min(HEIGHT, ((event.clientY - bounds.top) * HEIGHT) / bounds.height)),
     };
   }
 

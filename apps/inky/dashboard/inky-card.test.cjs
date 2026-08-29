@@ -33,6 +33,31 @@ function imageFile(bytes, type) {
   return new Blob([Uint8Array.from(bytes)], { type });
 }
 
+test("requests a full-width sections card", () => {
+  assert.deepEqual(new InkyCard().getGridOptions(), {
+    columns: "full",
+    min_columns: 6,
+  });
+});
+
+test("maps and clamps pointer coordinates at any rendered size", () => {
+  const card = new InkyCard();
+  card._canvas = {
+    getBoundingClientRect() {
+      return { left: 10, top: 20, width: 400, height: 240 };
+    },
+  };
+
+  assert.deepEqual(card._point({ clientX: 210, clientY: 140 }), {
+    x: 400,
+    y: 240,
+  });
+  assert.deepEqual(card._point({ clientX: -50, clientY: 400 }), {
+    x: 0,
+    y: 480,
+  });
+});
+
 test("reads PNG dimensions before decoding", async () => {
   const bytes = new Uint8Array(24);
   bytes.set([0x89, 0x50, 0x4e, 0x47], 0);
