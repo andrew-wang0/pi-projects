@@ -78,11 +78,13 @@ this file is ignored by Git. If `MQTT_HOST` is unset, MQTT is disabled and
 local capture continues normally. Capture and display also continue if the
 broker is unreachable, credentials are wrong, or the MQTT package is missing.
 
-Inky publishes retained MQTT Discovery configurations. Home Assistant creates:
+Inky publishes retained MQTT Discovery configurations. Home Assistant creates
+device **Inky** with:
 
-- `light.inky_show_light`, named **Inky Light**, for independent on/off and
+- `light.inky_light`, named **Inky Light**, for independent on/off and
   brightness control.
-- `image.inky_latest_photo` for the latest captured 800×480 PNG.
+- `image.inky_latest_photo`, named **Inky Latest Photo**, for the latest
+  captured 800×480 PNG.
 
 The device publishes online/offline availability and its actual light state.
 MQTT light commands remain active while the e-paper display refreshes.
@@ -94,7 +96,7 @@ command. For example, this action fades the big LED to 70% over two seconds:
 ```yaml
 action: light.turn_on
 target:
-  entity_id: light.inky_show_light
+  entity_id: light.inky_light
 data:
   brightness_pct: 70
   transition: 2

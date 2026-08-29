@@ -35,7 +35,7 @@ class HomeAssistant:
         try:
             client = mqtt.Client(
                 mqtt.CallbackAPIVersion.VERSION2,
-                client_id=f"{self._mqtt.device_id}-camera",
+                client_id=self._mqtt.device_id,
             )
             if self._mqtt.username:
                 client.username_pw_set(self._mqtt.username, self._mqtt.password)
@@ -175,9 +175,9 @@ class HomeAssistant:
         assert self._client is not None
         device = {
             "identifiers": [self._mqtt.device_id],
-            "name": "Inky Camera",
+            "name": "Inky",
             "manufacturer": "Custom",
-            "model": "Inky Impression 7.3 Camera",
+            "model": "Inky Impression 7.3",
         }
         availability = {
             "availability_topic": self._topic("status"),
@@ -185,9 +185,10 @@ class HomeAssistant:
             "payload_not_available": "offline",
         }
         light = {
-            "name": "Inky Light",
-            "default_entity_id": f"light.{self._mqtt.device_id}_show_light",
-            "unique_id": f"{self._mqtt.device_id}_show_light",
+            # Entity name is "Light"; HA prefixes the device name → "Inky Light".
+            "name": "Light",
+            "default_entity_id": f"light.{self._mqtt.device_id}_light",
+            "unique_id": f"{self._mqtt.device_id}_light",
             "schema": "json",
             "command_topic": self._topic("light/set"),
             "state_topic": self._topic("light/state"),
@@ -206,10 +207,11 @@ class HomeAssistant:
             "device": device,
             **availability,
         }
-        self._publish_config("light", "show_light", light)
+        self._publish_config("light", "light", light)
         self._publish_config("image", "latest_photo", image)
         # Clear obsolete retained discovery from earlier designs.
         for component, entity in (
+            ("light", "show_light"),
             ("image", "archive_queue"),
             ("sensor", "last_photo"),
             ("sensor", "display_status"),
